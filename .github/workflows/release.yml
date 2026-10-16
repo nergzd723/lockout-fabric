@@ -1,0 +1,36 @@
+name: Release
+
+# Builds the mod and publishes a GitHub release when a version tag (e.g. v0.10.0) is pushed.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build
+        run: ./gradlew build
+
+      - name: Release notes from the changelog
+        # The first "## " section of changelog.md is the release being published.
+        run: awk '/^## /{n++} n==1' changelog.md > release-notes.md
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: Lockout ${{ github.ref_name }} (Minecraft 26.3)
+          body_path: release-notes.md
+          files: build/libs/lockout-fabric-*.jar

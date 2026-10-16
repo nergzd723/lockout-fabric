@@ -1,4 +1,4 @@
-## Unreleased
+## Lockout v0.10.0
 - The mod is now on Minecraft 26.3.
 - Added Draft mode: teams build the board by picking goals in turns (snake order) before the match starts.
     - `/lockout draft teams <team names>` or `/lockout draft players <player names>`, `/lockout draft cancel`

@@ -21,6 +21,8 @@ public class Obtain4UniqueSaplingsGoal extends ObtainSomeOfTheItemsGoal {
             Items.CHERRY_SAPLING,
             Items.DARK_OAK_SAPLING,
             Items.JUNGLE_SAPLING,
+            Items.PALE_OAK_SAPLING,
+            Items.POPLAR_SAPLING,
             Items.SPRUCE_SAPLING,
             Items.MANGROVE_PROPAGULE
     );

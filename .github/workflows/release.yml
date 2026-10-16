@@ -1,10 +1,13 @@
 name: Release
 
-# Builds the mod and publishes a GitHub release when a version tag (e.g. v0.10.0) is pushed.
+# Builds the mod and publishes a GitHub release with the jar.
+# Runs when a version tag (e.g. v0.10.0) is pushed, or manually from the Actions tab,
+# in which case the tag is created from mod_version in gradle.properties.
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -25,12 +28,18 @@ jobs:
       - name: Build
         run: ./gradlew build
 
-      - name: Release notes from the changelog
-        # The first "## " section of changelog.md is the release being published.
-        run: awk '/^## /{n++} n==1' changelog.md > release-notes.md
+      - name: Version and release notes
+        id: version
+        run: |
+          echo "tag=v$(grep '^mod_version=' gradle.properties | cut -d= -f2)" >> "$GITHUB_OUTPUT"
+          echo "minecraft=$(grep '^minecraft_version=' gradle.properties | cut -d= -f2)" >> "$GITHUB_OUTPUT"
+          # The first "## " section of changelog.md is the release being published.
+          awk '/^## /{n++} n==1' changelog.md > release-notes.md
 
       - uses: softprops/action-gh-release@v2
         with:
-          name: Lockout ${{ github.ref_name }} (Minecraft 26.3)
+          tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Lockout ${{ steps.version.outputs.tag }} (Minecraft ${{ steps.version.outputs.minecraft }})
           body_path: release-notes.md
           files: build/libs/lockout-fabric-*.jar

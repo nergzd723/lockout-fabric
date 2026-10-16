@@ -48,6 +48,21 @@ Start a Blackout match:
 - `/blackout team <team name>`
 - `/blackout players <player name> <player name> ...`
 
+# Draft
+
+Instead of a random board, teams can build the board by picking goals in turns. Picks go in snake order
+(1, 2, 3, 3, 2, 1, 1, 2, ...), so the first team doesn't keep its head start. Each pick offers a few random goals;
+anyone on the picking team can choose one, or use a reroll to get new options. If the timer runs out, one of the
+offered goals is picked at random. Once the board is full, the match starts as usual.
+
+- `/lockout draft teams <team name> <team name> ...`
+- `/lockout draft players <player name> <player name> ...`
+- `/lockout draft cancel`
+- `/SetDraftSettings <offer size> <pick seconds> <rerolls>` - goals offered per pick (1-5), seconds per pick (3-120)
+  and rerolls per team (0-10). Defaults are 2, 10 and 1, and can be changed in `config/lockout.json`.
+
+The board size from `/SetBoardSize` applies. Press Esc to close the draft screen; it opens again on the next pick.
+
 # Board Builder
 
 You can create and play custom boards in-game.

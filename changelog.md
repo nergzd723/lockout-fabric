@@ -1,5 +1,11 @@
 ## Unreleased
 - The mod is now on Minecraft 26.3.
+- Added Draft mode: teams build the board by picking goals in turns (snake order) before the match starts.
+    - `/lockout draft teams <team names>` or `/lockout draft players <player names>`, `/lockout draft cancel`
+    - `/SetDraftSettings <offer size> <pick seconds> <rerolls>`, with defaults in the config file
+      ('draft offer size' 2, 'draft pick seconds' 10, 'draft rerolls' 1)
+    - Picks respect the same goal requirements and conflicts as random boards.
+    - Players who disconnect during the draft are still on their team when the match starts.
 - 'Obtain 4 Unique Saplings' now counts Poplar and Pale Oak Saplings.
 - 'Obtain every type of Horse Armor' now requires Copper Horse Armor.
 - 'Use Glow Ink on Crimson Sign', 'Use Glow Ink on Warped Sign' and 'Use Glow Ink on Crimson or Warped Sign' can't appear on the same board.

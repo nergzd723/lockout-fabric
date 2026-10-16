@@ -1,5 +1,7 @@
 package me.marin.lockout.client;
 
+import me.marin.lockout.network.DraftStatePayload;
+import me.marin.lockout.client.gui.DraftScreen;
 import com.mojang.blaze3d.platform.InputConstants;
 import me.marin.lockout.*;
 import me.marin.lockout.client.gui.*;
@@ -93,6 +95,9 @@ public class LockoutClient implements ClientModInitializer {
                     client.gui.setScreen(new BoardScreen(BOARD_SCREEN_HANDLER.create(0, client.player.getInventory()), client.player.getInventory(), Component.empty()));
                 }
             });
+        });
+        ClientPlayNetworking.registerGlobalReceiver(DraftStatePayload.ID, (payload, context) -> {
+            context.client().execute(() -> DraftScreen.onState(payload));
         });
         ClientPlayNetworking.registerGlobalReceiver(UpdateTooltipPayload.ID, (payload, context) -> {
             goalTooltipMap.put(payload.goal(), payload.tooltip());

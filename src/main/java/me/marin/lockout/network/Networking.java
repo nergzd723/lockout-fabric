@@ -12,7 +12,9 @@ public class Networking {
         PayloadTypeRegistry.clientboundPlay().register(EndLockoutPayload.ID, EndLockoutPayload.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(LockoutVersionPayload.ID, LockoutVersionPayload.CODEC);
 
+        PayloadTypeRegistry.clientboundPlay().register(DraftStatePayload.ID, DraftStatePayload.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(CustomBoardPayload.ID, CustomBoardPayload.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(DraftActionPayload.ID, DraftActionPayload.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(LockoutVersionPayload.ID, LockoutVersionPayload.CODEC);
     }
 }

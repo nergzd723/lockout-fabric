@@ -1,5 +1,6 @@
 package me.marin.lockout.server.handlers;
 
+import me.marin.lockout.server.LockoutServer;
 import me.marin.lockout.lockout.interfaces.LeashUniqueMobsGoal;
 import me.marin.lockout.lockout.goals.leash.LeashIronGolemGoal;
 import net.minecraft.world.entity.Mob;
@@ -36,6 +37,9 @@ public class EndServerTickEventHandler implements ServerTickEvents.EndTick {
 
     @Override
     public void onEndTick(MinecraftServer server) {
+        if (LockoutServer.draftSession != null) {
+            LockoutServer.draftSession.tick();
+        }
         if (!Lockout.isLockoutRunning(lockout)) return;
 
         for (LockoutRunnable runnable : new HashSet<>(gameStartRunnables.keySet())) {

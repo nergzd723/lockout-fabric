@@ -1,5 +1,6 @@
 package me.marin.lockout;
 
+import net.minecraft.server.level.ServerPlayer;
 import java.util.*;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
@@ -22,11 +23,16 @@ public class CompassItemHandler {
     public final Map<UUID, Integer> currentSelection = new HashMap<>();
     public final Map<UUID, Integer> compassSlots = new HashMap<>();
 
-    public CompassItemHandler(List<UUID> players, PlayerList playerManager) {
+    /**
+     * @param names player names from their teams, used for players who are offline when the match starts
+     *              (possible after a draft, which can take a few minutes)
+     */
+    public CompassItemHandler(List<UUID> players, Map<UUID, String> names, PlayerList playerManager) {
         for (int i = 0; i < players.size(); i++) {
             UUID playerId = players.get(i);
             this.players.add(playerId);
-            this.playerNames.put(playerId, playerManager.getPlayer(playerId).getName().getString());
+            ServerPlayer player = playerManager.getPlayer(playerId);
+            this.playerNames.put(playerId, player != null ? player.getName().getString() : names.get(playerId));
 
             this.currentSelection.put(playerId, i == 0 ? 1 : 0);
         }

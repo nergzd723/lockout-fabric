@@ -1,5 +1,6 @@
 package me.marin.lockout.server;
 
+import me.marin.lockout.network.DraftActionPayload;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import me.marin.lockout.*;
@@ -62,6 +63,11 @@ public class LockoutServer {
 
     private static int lockoutStartTime = 60;
     private static int boardSize;
+    private static int draftOfferSize;
+    private static int draftPickSeconds;
+    private static int draftRerolls;
+
+    public static DraftSession draftSession;
 
     public static Lockout lockout;
     public static MinecraftServer server;
@@ -77,6 +83,7 @@ public class LockoutServer {
 
     public static void initializeServer() {
         lockout = null;
+        draftSession = null;
         compassHandler = null;
         gameStartRunnables.clear();
 
@@ -88,6 +95,9 @@ public class LockoutServer {
         LockoutConfig.load(); // reload config every time the server starts
         boardSize = LockoutConfig.getInstance().boardSize;
         Lockout.log("Using default board size: " + boardSize);
+        draftOfferSize = LockoutConfig.getInstance().draftOfferSize;
+        draftPickSeconds = LockoutConfig.getInstance().draftPickSeconds;
+        draftRerolls = LockoutConfig.getInstance().draftRerolls;
 
         if (isInitialized) return;
         isInitialized = true;
@@ -147,6 +157,12 @@ public class LockoutServer {
             ServerPlayNetworking.send(player, lockout.getUpdateTimerPacket());
             if (lockout.hasStarted()) {
                 ServerPlayNetworking.send(player, StartLockoutPayload.INSTANCE);
+            }
+        });
+
+        ServerPlayNetworking.registerGlobalReceiver(DraftActionPayload.ID, (payload, context) -> {
+            if (draftSession != null) {
+                draftSession.handleAction(context.player(), payload);
             }
         });
 
@@ -239,9 +255,49 @@ public class LockoutServer {
         int ret = parseArgumentsIntoTeams(teams, context, false);
         if (ret == 0) return 0;
 
-        startLockout(teams);
+        cancelDraft();
+        startLockout(teams, null);
 
         return 1;
+    }
+
+    public static int draftCommandLogic(CommandContext<CommandSourceStack> context) {
+        List<LockoutTeamServer> teams = new ArrayList<>();
+
+        int ret = parseArgumentsIntoTeams(teams, context, false);
+        if (ret == 0) return 0;
+
+        cancelDraft();
+        if (Lockout.isLockoutRunning(lockout)) {
+            lockout.setRunning(false);
+        }
+        gameStartRunnables.clear();
+
+        // Players can't break or place blocks while the board is being drafted.
+        List<UUID> draftingPlayers = teams.stream().flatMap(team -> team.getPlayers().stream()).toList();
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            player.setGameMode(draftingPlayers.contains(player.getUUID()) ? GameType.ADVENTURE : GameType.SPECTATOR);
+        }
+
+        draftSession = new DraftSession(server, teams, boardSize, draftOfferSize, draftPickSeconds, draftRerolls);
+        draftSession.start();
+        return 1;
+    }
+
+    public static int cancelDraftCommand(CommandContext<CommandSourceStack> context) {
+        if (draftSession == null) {
+            context.getSource().sendFailure(Component.literal("No draft is running."));
+            return 0;
+        }
+        cancelDraft();
+        return 1;
+    }
+
+    private static void cancelDraft() {
+        if (draftSession != null) {
+            draftSession.cancel();
+            draftSession = null;
+        }
     }
 
     public static int blackoutCommandLogic(CommandContext<CommandSourceStack> context) {
@@ -250,12 +306,16 @@ public class LockoutServer {
         int ret = parseArgumentsIntoTeams(teams, context, true);
         if (ret == 0) return 0;
 
-        startLockout(teams);
+        cancelDraft();
+        startLockout(teams, null);
 
         return 1;
     }
 
-    private static void startLockout(List<LockoutTeamServer> teams) {
+    /**
+     * @param draftedBoard board built in a draft, or null to use the custom board or generate one
+     */
+    public static void startLockout(List<LockoutTeamServer> teams, LockoutBoard draftedBoard) {
         // Clear old runnables
         gameStartRunnables.clear();
 
@@ -302,7 +362,9 @@ public class LockoutServer {
 
         // Generate & set board
         LockoutBoard lockoutBoard;
-        if (CUSTOM_BOARD == null) {
+        if (draftedBoard != null) {
+            lockoutBoard = draftedBoard;
+        } else if (CUSTOM_BOARD == null) {
             BoardGenerator boardGenerator = new BoardGenerator(GoalRegistry.INSTANCE.getRegisteredGoals(), teams, AVAILABLE_DYE_COLORS, BIOME_LOCATE_DATA, STRUCTURE_LOCATE_DATA);
             lockoutBoard = boardGenerator.generateBoard(boardSize);
         } else {
@@ -316,7 +378,13 @@ public class LockoutServer {
         lockout = new Lockout(lockoutBoard, teams);
         lockout.setTicks(-20L * lockoutStartTime); // see Lockout#ticks
 
-        compassHandler = new CompassItemHandler(allLockoutPlayers, playerManager);
+        Map<UUID, String> playerNames = new HashMap<>();
+        for (LockoutTeamServer team : teams) {
+            for (UUID playerId : team.getPlayers()) {
+                playerNames.put(playerId, team.getPlayerName(playerId));
+            }
+        }
+        compassHandler = new CompassItemHandler(allLockoutPlayers, playerNames, playerManager);
 
         List<Goal> tooltipGoals = new ArrayList<>(lockout.getBoard().getGoals()).stream().filter(g -> g instanceof HasTooltipInfo).toList();
         for (Goal goal : tooltipGoals) {
@@ -564,6 +632,14 @@ public class LockoutServer {
 
         lockoutStartTime = seconds;
         context.getSource().sendSystemMessage(Component.nullToEmpty("Updated start time to " + seconds + "s."));
+        return 1;
+    }
+
+    public static int setDraftSettings(CommandContext<CommandSourceStack> context) {
+        draftOfferSize = context.getArgument("offer size", Integer.class);
+        draftPickSeconds = context.getArgument("pick seconds", Integer.class);
+        draftRerolls = context.getArgument("rerolls", Integer.class);
+        context.getSource().sendSystemMessage(Component.nullToEmpty("Drafts now offer " + draftOfferSize + " goals per pick, with " + draftPickSeconds + "s per pick and " + draftRerolls + " reroll(s) per team."));
         return 1;
     }
 

@@ -26,6 +26,12 @@ public class LockoutConfig {
 
     @SerializedName("show NoiseRouter line")
     public boolean showNoiseRouterLine = false;
+    @SerializedName("draft offer size")
+    public int draftOfferSize = 2;
+    @SerializedName("draft pick seconds")
+    public int draftPickSeconds = 10;
+    @SerializedName("draft rerolls")
+    public int draftRerolls = 1;
 
     public static void load() {
         if (!Files.exists(CONFIG_PATH)) {
@@ -49,6 +55,9 @@ public class LockoutConfig {
         instance.boardSize = 5;
         instance.boardPosition = BoardPosition.RIGHT;
         instance.showNoiseRouterLine = false;
+        instance.draftOfferSize = 2;
+        instance.draftPickSeconds = 10;
+        instance.draftRerolls = 1;
     }
 
     private static void createConfigDir() {

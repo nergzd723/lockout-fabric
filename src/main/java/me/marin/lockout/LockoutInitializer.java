@@ -68,6 +68,21 @@ public class LockoutInitializer implements ModInitializer {
                     commandNode.addChild(playersNode);
                     teamsNode.addChild(teamListNode);
                     playersNode.addChild(playerListNode);
+
+                    // Draft: teams pick the board's goals in turns, then the match starts.
+                    var draftNode = Commands.literal("draft").build();
+                    var draftTeamsNode = Commands.literal("teams").build();
+                    var draftPlayersNode = Commands.literal("players").build();
+                    var draftTeamListNode = Commands.argument("team names", StringArgumentType.greedyString()).executes(LockoutServer::draftCommandLogic).build();
+                    var draftPlayerListNode = Commands.argument("player names", StringArgumentType.greedyString()).executes(LockoutServer::draftCommandLogic).build();
+                    var draftCancelNode = Commands.literal("cancel").executes(LockoutServer::cancelDraftCommand).build();
+
+                    commandNode.addChild(draftNode);
+                    draftNode.addChild(draftTeamsNode);
+                    draftNode.addChild(draftPlayersNode);
+                    draftNode.addChild(draftCancelNode);
+                    draftTeamsNode.addChild(draftTeamListNode);
+                    draftPlayersNode.addChild(draftPlayerListNode);
                 }
 
 
@@ -128,6 +143,20 @@ public class LockoutInitializer implements ModInitializer {
                     ClientPlayNetworking.send(new CustomBoardPayload(Optional.empty()));
                     return 1;
                 }).build());
+            }
+
+            {
+                // SetDraftSettings command
+
+                var setDraftSettingsRoot = Commands.literal("SetDraftSettings").requires(PERMISSIONS).build();
+                var offerSize = Commands.argument("offer size", IntegerArgumentType.integer(1, 5)).build();
+                var pickSeconds = Commands.argument("pick seconds", IntegerArgumentType.integer(3, 120)).build();
+                var rerolls = Commands.argument("rerolls", IntegerArgumentType.integer(0, 10)).executes(LockoutServer::setDraftSettings).build();
+
+                dispatcher.getRoot().addChild(setDraftSettingsRoot);
+                setDraftSettingsRoot.addChild(offerSize);
+                offerSize.addChild(pickSeconds);
+                pickSeconds.addChild(rerolls);
             }
 
             {

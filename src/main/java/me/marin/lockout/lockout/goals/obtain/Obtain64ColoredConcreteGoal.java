@@ -3,13 +3,12 @@ package me.marin.lockout.lockout.goals.obtain;
 import me.marin.lockout.lockout.goals.util.GoalDataConstants;
 import me.marin.lockout.lockout.interfaces.ObtainAllItemsGoal;
 import me.marin.lockout.lockout.interfaces.RequiresAmount;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.util.DyeColor;
-
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import java.util.List;
 
 public class Obtain64ColoredConcreteGoal extends ObtainAllItemsGoal implements RequiresAmount {
@@ -25,7 +24,7 @@ public class Obtain64ColoredConcreteGoal extends ObtainAllItemsGoal implements R
 
         GOAL_NAME = "Obtain 64 " + GoalDataConstants.getDyeColorFormatted(DYE_COLOR) + " Concrete";
         ITEMS = List.of(getConcreteColor(data));
-        ITEM_STACK = getConcreteColor(data).getDefaultStack();
+        ITEM_STACK = getConcreteColor(data).getDefaultInstance();
         ITEM_STACK.setCount(64);
     }
 
@@ -47,29 +46,29 @@ public class Obtain64ColoredConcreteGoal extends ObtainAllItemsGoal implements R
     public static Item getConcreteColor(String colorString) {
         return switch (colorString) {
             default -> null;
-            case "white" -> Items.WHITE_CONCRETE;
-            case "orange" -> Items.ORANGE_CONCRETE;
-            case "magenta" -> Items.MAGENTA_CONCRETE;
-            case "light_blue" -> Items.LIGHT_BLUE_CONCRETE;
-            case "yellow" -> Items.YELLOW_CONCRETE;
-            case "lime" -> Items.LIME_CONCRETE;
-            case "pink" -> Items.PINK_CONCRETE;
-            case "gray" -> Items.GRAY_CONCRETE;
-            case "light_gray" -> Items.LIGHT_GRAY_CONCRETE;
-            case "cyan" -> Items.CYAN_CONCRETE;
-            case "purple" -> Items.PURPLE_CONCRETE;
-            case "blue" -> Items.BLUE_CONCRETE;
-            case "brown" -> Items.BROWN_CONCRETE;
-            case "green" -> Items.GREEN_CONCRETE;
-            case "red" -> Items.RED_CONCRETE;
-            case "black" -> Items.BLACK_CONCRETE;
+            case "white" -> Items.CONCRETE.pick(DyeColor.WHITE);
+            case "orange" -> Items.CONCRETE.pick(DyeColor.ORANGE);
+            case "magenta" -> Items.CONCRETE.pick(DyeColor.MAGENTA);
+            case "light_blue" -> Items.CONCRETE.pick(DyeColor.LIGHT_BLUE);
+            case "yellow" -> Items.CONCRETE.pick(DyeColor.YELLOW);
+            case "lime" -> Items.CONCRETE.pick(DyeColor.LIME);
+            case "pink" -> Items.CONCRETE.pick(DyeColor.PINK);
+            case "gray" -> Items.CONCRETE.pick(DyeColor.GRAY);
+            case "light_gray" -> Items.CONCRETE.pick(DyeColor.LIGHT_GRAY);
+            case "cyan" -> Items.CONCRETE.pick(DyeColor.CYAN);
+            case "purple" -> Items.CONCRETE.pick(DyeColor.PURPLE);
+            case "blue" -> Items.CONCRETE.pick(DyeColor.BLUE);
+            case "brown" -> Items.CONCRETE.pick(DyeColor.BROWN);
+            case "green" -> Items.CONCRETE.pick(DyeColor.GREEN);
+            case "red" -> Items.CONCRETE.pick(DyeColor.RED);
+            case "black" -> Items.CONCRETE.pick(DyeColor.BLACK);
         };
     }
 
     @Override
-    public boolean renderTexture(DrawContext context, int x, int y, int tick) {
+    public boolean renderTexture(GuiGraphicsExtractor context, int x, int y, int tick) {
         super.renderTexture(context, x, y, tick);
-        context.drawStackOverlay(MinecraftClient.getInstance().textRenderer, ITEM_STACK, x, y);
+        context.itemDecorations(Minecraft.getInstance().font, ITEM_STACK, x, y);
         return true;
     }
 

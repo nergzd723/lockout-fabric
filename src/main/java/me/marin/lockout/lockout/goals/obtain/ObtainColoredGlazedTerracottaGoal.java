@@ -2,10 +2,9 @@ package me.marin.lockout.lockout.goals.obtain;
 
 import me.marin.lockout.lockout.goals.util.GoalDataConstants;
 import me.marin.lockout.lockout.interfaces.ObtainAllItemsGoal;
-import net.minecraft.item.Item;
-import net.minecraft.item.Items;
-import net.minecraft.util.DyeColor;
-
+import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
 import java.util.List;
 
 public class ObtainColoredGlazedTerracottaGoal extends ObtainAllItemsGoal {
@@ -35,22 +34,22 @@ public class ObtainColoredGlazedTerracottaGoal extends ObtainAllItemsGoal {
     public static Item getGlazedTerracottaColor(String colorString) {
         return switch (colorString) {
             default -> null;
-            case "white" -> Items.WHITE_GLAZED_TERRACOTTA;
-            case "orange" -> Items.ORANGE_GLAZED_TERRACOTTA;
-            case "magenta" -> Items.MAGENTA_GLAZED_TERRACOTTA;
-            case "light_blue" -> Items.LIGHT_BLUE_GLAZED_TERRACOTTA;
-            case "yellow" -> Items.YELLOW_GLAZED_TERRACOTTA;
-            case "lime" -> Items.LIME_GLAZED_TERRACOTTA;
-            case "pink" -> Items.PINK_GLAZED_TERRACOTTA;
-            case "gray" -> Items.GRAY_GLAZED_TERRACOTTA;
-            case "light_gray" -> Items.LIGHT_GRAY_GLAZED_TERRACOTTA;
-            case "cyan" -> Items.CYAN_GLAZED_TERRACOTTA;
-            case "purple" -> Items.PURPLE_GLAZED_TERRACOTTA;
-            case "blue" -> Items.BLUE_GLAZED_TERRACOTTA;
-            case "brown" -> Items.BROWN_GLAZED_TERRACOTTA;
-            case "green" -> Items.GREEN_GLAZED_TERRACOTTA;
-            case "red" -> Items.RED_GLAZED_TERRACOTTA;
-            case "black" -> Items.BLACK_GLAZED_TERRACOTTA;
+            case "white" -> Items.GLAZED_TERRACOTTA.pick(DyeColor.WHITE);
+            case "orange" -> Items.GLAZED_TERRACOTTA.pick(DyeColor.ORANGE);
+            case "magenta" -> Items.GLAZED_TERRACOTTA.pick(DyeColor.MAGENTA);
+            case "light_blue" -> Items.GLAZED_TERRACOTTA.pick(DyeColor.LIGHT_BLUE);
+            case "yellow" -> Items.GLAZED_TERRACOTTA.pick(DyeColor.YELLOW);
+            case "lime" -> Items.GLAZED_TERRACOTTA.pick(DyeColor.LIME);
+            case "pink" -> Items.GLAZED_TERRACOTTA.pick(DyeColor.PINK);
+            case "gray" -> Items.GLAZED_TERRACOTTA.pick(DyeColor.GRAY);
+            case "light_gray" -> Items.GLAZED_TERRACOTTA.pick(DyeColor.LIGHT_GRAY);
+            case "cyan" -> Items.GLAZED_TERRACOTTA.pick(DyeColor.CYAN);
+            case "purple" -> Items.GLAZED_TERRACOTTA.pick(DyeColor.PURPLE);
+            case "blue" -> Items.GLAZED_TERRACOTTA.pick(DyeColor.BLUE);
+            case "brown" -> Items.GLAZED_TERRACOTTA.pick(DyeColor.BROWN);
+            case "green" -> Items.GLAZED_TERRACOTTA.pick(DyeColor.GREEN);
+            case "red" -> Items.GLAZED_TERRACOTTA.pick(DyeColor.RED);
+            case "black" -> Items.GLAZED_TERRACOTTA.pick(DyeColor.BLACK);
         };
     }
 

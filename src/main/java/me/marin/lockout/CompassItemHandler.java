@@ -1,21 +1,20 @@
 package me.marin.lockout;
 
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.NbtComponent;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.server.PlayerManager;
-
 import java.util.*;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.players.PlayerList;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.CustomData;
 
 public class CompassItemHandler {
 
     public static boolean isCompass(ItemStack item) {
         return item != null &&
                 item.getItem() == Items.COMPASS &&
-                Optional.ofNullable(item.get(DataComponentTypes.CUSTOM_DATA)).map(customData -> customData.contains("PlayerTracker")).orElse(false);
+                Optional.ofNullable(item.get(DataComponents.CUSTOM_DATA)).map(customData -> customData.copyTag().contains("PlayerTracker")).orElse(false);
     }
 
     public final List<UUID> players = new ArrayList<>();
@@ -23,7 +22,7 @@ public class CompassItemHandler {
     public final Map<UUID, Integer> currentSelection = new HashMap<>();
     public final Map<UUID, Integer> compassSlots = new HashMap<>();
 
-    public CompassItemHandler(List<UUID> players, PlayerManager playerManager) {
+    public CompassItemHandler(List<UUID> players, PlayerList playerManager) {
         for (int i = 0; i < players.size(); i++) {
             UUID playerId = players.get(i);
             this.players.add(playerId);
@@ -33,20 +32,20 @@ public class CompassItemHandler {
         }
     }
 
-    public void cycle(PlayerEntity player) {
-        int cur = currentSelection.get(player.getUuid());
+    public void cycle(Player player) {
+        int cur = currentSelection.get(player.getUUID());
         int next = (cur + 1) % players.size();
-        if (players.get(next).equals(player.getUuid())) {
+        if (players.get(next).equals(player.getUUID())) {
             next = (next + 1) % players.size();
         }
-        currentSelection.put(player.getUuid(), next);
+        currentSelection.put(player.getUUID(), next);
     }
 
     public ItemStack newCompass() {
-        ItemStack compass = Items.COMPASS.getDefaultStack();
-        NbtCompound compound = new NbtCompound();
+        ItemStack compass = Items.COMPASS.getDefaultInstance();
+        CompoundTag compound = new CompoundTag();
         compound.putString("PlayerTracker", UUID.randomUUID().toString());
-        compass.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(compound));
+        compass.set(DataComponents.CUSTOM_DATA, CustomData.of(compound));
         return compass;
     }
 

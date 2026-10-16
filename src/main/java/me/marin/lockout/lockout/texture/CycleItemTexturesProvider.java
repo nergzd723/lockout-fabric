@@ -1,18 +1,17 @@
 package me.marin.lockout.lockout.texture;
 
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.item.Item;
-
 import java.util.List;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.world.item.Item;
 
 public interface CycleItemTexturesProvider extends CustomTextureRenderer {
 
     List<Item> getItemsToDisplay();
 
     @Override
-    default boolean renderTexture(DrawContext context, int x, int y, int tick) {
+    default boolean renderTexture(GuiGraphicsExtractor context, int x, int y, int tick) {
         int mod = tick % (60 * getItemsToDisplay().size());
-        context.drawItem(getItemsToDisplay().get(mod / 60).getDefaultStack(), x, y);
+        context.item(getItemsToDisplay().get(mod / 60).getDefaultInstance(), x, y);
         return true;
     }
 

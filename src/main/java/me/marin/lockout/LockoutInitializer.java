@@ -100,6 +100,21 @@ public class LockoutInitializer implements ModInitializer {
                     commandNode.addChild(playersNode);
                     teamNode.addChild(teamNameNode);
                     playersNode.addChild(playerListNode);
+
+                    // Solo draft: one team picks every goal, then plays the board as Blackout.
+                    var draftNode = Commands.literal("draft").build();
+                    var draftTeamNode = Commands.literal("team").build();
+                    var draftPlayersNode = Commands.literal("players").build();
+                    var draftTeamNameNode = Commands.argument("team name", StringArgumentType.greedyString()).executes(LockoutServer::blackoutDraftCommandLogic).build();
+                    var draftPlayerListNode = Commands.argument("player names", StringArgumentType.greedyString()).executes(LockoutServer::blackoutDraftCommandLogic).build();
+                    var draftCancelNode = Commands.literal("cancel").executes(LockoutServer::cancelDraftCommand).build();
+
+                    commandNode.addChild(draftNode);
+                    draftNode.addChild(draftTeamNode);
+                    draftNode.addChild(draftPlayersNode);
+                    draftNode.addChild(draftCancelNode);
+                    draftTeamNode.addChild(draftTeamNameNode);
+                    draftPlayersNode.addChild(draftPlayerListNode);
                 }
             }
 

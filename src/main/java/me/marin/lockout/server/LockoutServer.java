@@ -262,9 +262,20 @@ public class LockoutServer {
     }
 
     public static int draftCommandLogic(CommandContext<CommandSourceStack> context) {
+        return startDraft(context, false);
+    }
+
+    /**
+     * Solo draft: one team picks every goal, then plays the board as Blackout.
+     */
+    public static int blackoutDraftCommandLogic(CommandContext<CommandSourceStack> context) {
+        return startDraft(context, true);
+    }
+
+    private static int startDraft(CommandContext<CommandSourceStack> context, boolean isBlackout) {
         List<LockoutTeamServer> teams = new ArrayList<>();
 
-        int ret = parseArgumentsIntoTeams(teams, context, false);
+        int ret = parseArgumentsIntoTeams(teams, context, isBlackout);
         if (ret == 0) return 0;
 
         cancelDraft();

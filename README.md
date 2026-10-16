@@ -58,6 +58,8 @@ offered goals is picked at random. Once the board is full, the match starts as u
 - `/lockout draft teams <team name> <team name> ...`
 - `/lockout draft players <player name> <player name> ...`
 - `/lockout draft cancel`
+- `/blackout draft players <player name> ...` or `/blackout draft team <team name>` - solo draft: one team picks
+  every goal, then plays the board as Blackout. Works in singleplayer too.
 - `/SetDraftSettings <offer size> <pick seconds> <rerolls>` - goals offered per pick (1-5), seconds per pick (3-120)
   and rerolls per team (0-10). Defaults are 2, 10 and 1, and can be changed in `config/lockout.json`.
 

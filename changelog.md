@@ -1,3 +1,9 @@
+## Lockout v0.10.1
+- Added solo drafts: `/blackout draft players <player names>` or `/blackout draft team <team name>`.
+  One team picks every goal (with the same offers, timer and rerolls), then plays the board as Blackout.
+  This also works in singleplayer.
+- Fixed a crash when a draft finished while one of its players was offline.
+
 ## Lockout v0.10.0
 - The mod is now on Minecraft 26.3.
 - Added Draft mode: teams build the board by picking goals in turns (snake order) before the match starts.

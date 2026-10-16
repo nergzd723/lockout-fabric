@@ -168,7 +168,7 @@ public class DraftScreen extends Screen {
         LockoutTeam current = state.teams().get(state.currentTeam());
         String status;
         if (isMyTurn()) {
-            status = ChatFormatting.GREEN + "Your team's pick!";
+            status = ChatFormatting.GREEN + (state.teams().size() == 1 ? "Pick a goal!" : "Your team's pick!");
         } else {
             status = current.getColor() + current.getDisplayName() + ChatFormatting.WHITE + " is picking...";
         }
@@ -250,6 +250,7 @@ public class DraftScreen extends Screen {
 
     private void drawPickOrder(GuiGraphicsExtractor context, Font font) {
         int teamCount = state.teams().size();
+        if (teamCount == 1) return;
         int picked = state.picks().size();
         int total = state.boardSize() * state.boardSize();
 

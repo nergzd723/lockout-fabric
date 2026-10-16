@@ -71,8 +71,12 @@ public class DraftSession {
     }
 
     public void start() {
-        String order = String.join(ChatFormatting.GRAY + " → ", teams.stream().map(t -> t.getColor() + t.getDisplayName()).toList());
-        broadcast(Component.literal("Drafting a " + boardSize + "x" + boardSize + " board. Pick order: " + order + ChatFormatting.GRAY + " (snake order)."));
+        if (teams.size() == 1) {
+            broadcast(Component.literal("Drafting a " + boardSize + "x" + boardSize + " Blackout board."));
+        } else {
+            String order = String.join(ChatFormatting.GRAY + " → ", teams.stream().map(t -> t.getColor() + t.getDisplayName()).toList());
+            broadcast(Component.literal("Drafting a " + boardSize + "x" + boardSize + " board. Pick order: " + order + ChatFormatting.GRAY + " (snake order)."));
+        }
         newOffer();
         sendState();
     }

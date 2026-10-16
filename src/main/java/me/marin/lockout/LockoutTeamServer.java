@@ -34,6 +34,18 @@ public class LockoutTeamServer extends LockoutTeam {
         }
     }
 
+    /**
+     * Restores a saved team. Its players don't have to be online.
+     */
+    public LockoutTeamServer(List<String> playerNames, List<UUID> playerIds, ChatFormatting formattingColor, MinecraftServer server) {
+        super(playerNames, formattingColor);
+        this.server = server;
+        for (int i = 0; i < playerIds.size(); i++) {
+            this.players.add(playerIds.get(i));
+            this.playerNameMap.put(playerIds.get(i), playerNames.get(i));
+        }
+    }
+
     public String getPlayerName(UUID uuid) {
         return playerNameMap.get(uuid);
     }

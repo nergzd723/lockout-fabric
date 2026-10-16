@@ -1,3 +1,11 @@
+## Lockout v0.10.2
+- Matches now survive a server restart. The match is saved in the world folder (every 30 seconds and when the server
+  stops) and restored when the server starts again: board, teams, points, timer and all goal progress.
+- A restored match stays paused until every player is back. Players who are already online are frozen in adventure
+  mode and can't be hurt; once everyone is back, the match resumes after a 5 second countdown. The timer doesn't run
+  while paused.
+- A draft in progress is not restored after a restart.
+
 ## Lockout v0.10.1
 - Added solo drafts: `/blackout draft players <player names>` or `/blackout draft team <team name>`.
   One team picks every goal (with the same offers, timer and rerolls), then plays the board as Blackout.

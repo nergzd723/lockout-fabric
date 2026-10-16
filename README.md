@@ -65,6 +65,12 @@ offered goals is picked at random. Once the board is full, the match starts as u
 
 The board size from `/SetBoardSize` applies. Press Esc to close the draft screen; it opens again on the next pick.
 
+# Server restarts
+
+A running match is saved in the world folder (`lockout-match.json`) and restored when the server starts again.
+It stays paused until every player is back: players who are already online are frozen, and the match resumes
+after a short countdown once everyone has joined. A draft in progress is not restored.
+
 # Board Builder
 
 You can create and play custom boards in-game.

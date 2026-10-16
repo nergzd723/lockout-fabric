@@ -1,5 +1,7 @@
 package me.marin.lockout.server.handlers;
 
+import me.marin.lockout.server.MatchPause;
+import me.marin.lockout.server.MatchPersistence;
 import me.marin.lockout.server.LockoutServer;
 import me.marin.lockout.lockout.interfaces.LeashUniqueMobsGoal;
 import me.marin.lockout.lockout.goals.leash.LeashIronGolemGoal;
@@ -40,7 +42,16 @@ public class EndServerTickEventHandler implements ServerTickEvents.EndTick {
         if (LockoutServer.draftSession != null) {
             LockoutServer.draftSession.tick();
         }
+        // A finished (or replaced) match doesn't get restored after a restart.
+        if (lockout != null && !lockout.isRunning()) {
+            MatchPersistence.delete(server);
+        }
         if (!Lockout.isLockoutRunning(lockout)) return;
+
+        if (MatchPause.isPaused()) {
+            MatchPause.tick(server, lockout);
+            return;
+        }
 
         for (LockoutRunnable runnable : new HashSet<>(gameStartRunnables.keySet())) {
             if (gameStartRunnables.get(runnable) <= 0) {
@@ -121,6 +132,9 @@ public class EndServerTickEventHandler implements ServerTickEvents.EndTick {
         }
 
         lockout.tick();
+        if (lockout.getTicks() % SAVE_INTERVAL_TICKS == 0) {
+            MatchPersistence.save(server, lockout);
+        }
         if (lockout.getTicks() % 20 == 0) {
             checkLeashedMobs(server);
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
@@ -129,6 +143,7 @@ public class EndServerTickEventHandler implements ServerTickEvents.EndTick {
         }
     }
 
+    private static final int SAVE_INTERVAL_TICKS = 20 * 30;
     private static final double LEASH_SEARCH_RADIUS = 16.0;
 
     /**

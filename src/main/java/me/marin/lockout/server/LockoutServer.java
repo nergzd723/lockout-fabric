@@ -85,6 +85,7 @@ public class LockoutServer {
         lockout = null;
         draftSession = null;
         compassHandler = null;
+        MatchPause.reset();
         gameStartRunnables.clear();
 
         // Ideally, rejoining a world gets detected here, and this data doesn't get wiped
@@ -118,6 +119,14 @@ public class LockoutServer {
 
         ServerLifecycleEvents.SERVER_STARTED.register(new ServerStartedEventHandler());
 
+        ServerLifecycleEvents.SERVER_STOPPING.register(stoppingServer -> {
+            // Don't let the freeze (invulnerability is saved with the player) outlive the server; restoring freezes again.
+            MatchPause.cancel(stoppingServer);
+            if (Lockout.isLockoutRunning(lockout)) {
+                MatchPersistence.save(stoppingServer, lockout);
+            }
+        });
+
         ServerPlayConnectionEvents.DISCONNECT.register((handler, minecraftServer) -> {
             waitingForVersionPacketPlayersMap.remove(handler.getPlayer());
         });
@@ -142,7 +151,16 @@ public class LockoutServer {
                         ServerPlayNetworking.send(player, new UpdateTooltipPayload(goal.getId(), String.join("\n", hasTooltipInfo.getTooltip(team, player))));
                     }
                 }
-                player.setGameMode(GameType.SURVIVAL);
+                if (MatchPause.isPaused()) {
+                    // Frozen by MatchPause until everyone is back.
+                    player.setGameMode(GameType.ADVENTURE);
+                    List<String> missing = MatchPause.getMissingPlayers(server, lockout);
+                    if (!missing.isEmpty()) {
+                        player.sendSystemMessage(MatchPause.waitingMessage(missing));
+                    }
+                } else {
+                    player.setGameMode(GameType.SURVIVAL);
+                }
             } else {
                 for (Goal goal : lockout.getBoard().getGoals()) {
                     if (goal instanceof HasTooltipInfo hasTooltipInfo) {
@@ -279,6 +297,7 @@ public class LockoutServer {
         if (ret == 0) return 0;
 
         cancelDraft();
+        MatchPause.cancel(server);
         if (Lockout.isLockoutRunning(lockout)) {
             lockout.setRunning(false);
         }
@@ -329,6 +348,7 @@ public class LockoutServer {
     public static void startLockout(List<LockoutTeamServer> teams, LockoutBoard draftedBoard) {
         // Clear old runnables
         gameStartRunnables.clear();
+        MatchPause.cancel(server);
 
         PlayerList playerManager = server.getPlayerList();
         List<ServerPlayer> allServerPlayers = playerManager.getPlayers();
@@ -388,6 +408,7 @@ public class LockoutServer {
 
         lockout = new Lockout(lockoutBoard, teams);
         lockout.setTicks(-20L * lockoutStartTime); // see Lockout#ticks
+        MatchPersistence.save(server, lockout);
 
         Map<UUID, String> playerNames = new HashMap<>();
         for (LockoutTeamServer team : teams) {
@@ -644,6 +665,30 @@ public class LockoutServer {
         lockoutStartTime = seconds;
         context.getSource().sendSystemMessage(Component.nullToEmpty("Updated start time to " + seconds + "s."));
         return 1;
+    }
+
+    /**
+     * Restores the match that was running when the server stopped. It stays paused until every player is back.
+     */
+    public static void restoreSavedMatch() {
+        Lockout restored = MatchPersistence.load(server);
+        if (restored == null) return;
+
+        lockout = restored;
+        lockout.setStarted(false);
+        MatchPause.pause();
+
+        List<UUID> players = new ArrayList<>();
+        Map<UUID, String> playerNames = new HashMap<>();
+        for (LockoutTeam team : lockout.getTeams()) {
+            LockoutTeamServer serverTeam = (LockoutTeamServer) team;
+            for (UUID playerId : serverTeam.getPlayers()) {
+                players.add(playerId);
+                playerNames.put(playerId, serverTeam.getPlayerName(playerId));
+            }
+        }
+        compassHandler = new CompassItemHandler(players, playerNames, server.getPlayerList());
+        Lockout.log("Restored the " + lockout.getModeName() + " match from before the restart. It resumes once every player is back.");
     }
 
     public static int setDraftSettings(CommandContext<CommandSourceStack> context) {

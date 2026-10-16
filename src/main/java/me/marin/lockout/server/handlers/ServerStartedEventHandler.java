@@ -72,6 +72,8 @@ public class ServerStartedEventHandler implements ServerLifecycleEvents.ServerSt
             }
             long end = System.currentTimeMillis();
             Lockout.log("Located " + BIOME_LOCATE_DATA.size() + " biomes and " + STRUCTURE_LOCATE_DATA.size() + " structures in " + String.format("%.2f", ((end-start)/1000.0)) + "s!");
+
+            LockoutServer.restoreSavedMatch();
         });
     }
 }

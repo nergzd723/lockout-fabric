@@ -1,5 +1,10 @@
 package me.marin.lockout.server.handlers;
 
+import me.marin.lockout.lockout.interfaces.LeashUniqueMobsGoal;
+import me.marin.lockout.lockout.goals.leash.LeashIronGolemGoal;
+import net.minecraft.world.entity.Mob;
+import java.util.List;
+import java.util.Set;
 import net.minecraft.world.entity.EntityTypes;
 import me.marin.lockout.Lockout;
 import me.marin.lockout.LockoutRunnable;
@@ -113,9 +118,46 @@ public class EndServerTickEventHandler implements ServerTickEvents.EndTick {
 
         lockout.tick();
         if (lockout.getTicks() % 20 == 0) {
+            checkLeashedMobs(server);
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
                 ServerPlayNetworking.send(player, lockout.getUpdateTimerPacket());
             }
         }
     }
+
+    private static final double LEASH_SEARCH_RADIUS = 16.0;
+
+    /**
+     * Leash goals count mobs leashed to a player at the same time, so they're checked by scanning around each player.
+     */
+    private static void checkLeashedMobs(MinecraftServer server) {
+        List<Goal> leashGoals = lockout.getBoard().getGoals().stream()
+                .filter(goal -> goal != null && !goal.isCompleted() && (goal instanceof LeashUniqueMobsGoal || goal instanceof LeashIronGolemGoal))
+                .toList();
+        if (leashGoals.isEmpty()) return;
+
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if (!lockout.isLockoutPlayer(player.getUUID())) continue;
+            checkLeashedMobs(player, leashGoals);
+        }
+    }
+
+    private static void checkLeashedMobs(ServerPlayer player, List<Goal> leashGoals) {
+        Set<EntityType<?>> leashedTypes = new HashSet<>();
+        for (Mob mob : player.level().getEntitiesOfClass(Mob.class, player.getBoundingBox().inflate(LEASH_SEARCH_RADIUS), mob -> mob.getLeashHolder() == player)) {
+            leashedTypes.add(mob.getType());
+        }
+        if (leashedTypes.isEmpty()) return;
+
+        for (Goal goal : leashGoals) {
+            if (goal.isCompleted()) continue;
+            if (goal instanceof LeashUniqueMobsGoal leashUniqueMobsGoal && leashedTypes.size() >= leashUniqueMobsGoal.getAmount()) {
+                lockout.completeGoal(goal, player);
+            }
+            if (goal instanceof LeashIronGolemGoal && leashedTypes.contains(EntityTypes.IRON_GOLEM)) {
+                lockout.completeGoal(goal, player);
+            }
+        }
+    }
+
 }

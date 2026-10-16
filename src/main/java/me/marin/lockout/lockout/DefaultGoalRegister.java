@@ -7,7 +7,9 @@ import me.marin.lockout.lockout.goals.advancement.*;
 import me.marin.lockout.lockout.goals.advancement.unique.Get10UniqueAdvancementsGoal;
 import me.marin.lockout.lockout.goals.advancement.unique.Get20UniqueAdvancementsGoal;
 import me.marin.lockout.lockout.goals.advancement.unique.Get30UniqueAdvancementsGoal;
+import me.marin.lockout.lockout.goals.biome.VisitAllCaveBiomesGoal;
 import me.marin.lockout.lockout.goals.biome.VisitBadlandsBiomeGoal;
+import me.marin.lockout.lockout.goals.break_item.*;
 import me.marin.lockout.lockout.goals.biome.VisitIceSpikesBiomeGoal;
 import me.marin.lockout.lockout.goals.biome.VisitMushroomBiomeGoal;
 import me.marin.lockout.lockout.goals.breed_animals.*;
@@ -27,6 +29,8 @@ import me.marin.lockout.lockout.goals.experience.ReachXPLevel30Goal;
 import me.marin.lockout.lockout.goals.have_more.HaveMostUniqueCraftsGoal;
 import me.marin.lockout.lockout.goals.have_more.HaveMostXPLevelsGoal;
 import me.marin.lockout.lockout.goals.kill.*;
+import me.marin.lockout.lockout.goals.leash.*;
+import me.marin.lockout.lockout.goals.name.*;
 import me.marin.lockout.lockout.goals.kill.unique.Kill10UniqueHostileMobsGoal;
 import me.marin.lockout.lockout.goals.kill.unique.Kill13UniqueHostileMobsGoal;
 import me.marin.lockout.lockout.goals.kill.unique.Kill15UniqueHostileMobsGoal;
@@ -38,6 +42,7 @@ import me.marin.lockout.lockout.goals.opponent.*;
 import me.marin.lockout.lockout.goals.ride.RideHorseGoal;
 import me.marin.lockout.lockout.goals.ride.RideMinecartGoal;
 import me.marin.lockout.lockout.goals.ride.RidePigGoal;
+import me.marin.lockout.lockout.goals.spy.*;
 import me.marin.lockout.lockout.goals.status_effect.*;
 import me.marin.lockout.lockout.goals.status_effect.unique.Get3StatusEffectsGoal;
 import me.marin.lockout.lockout.goals.status_effect.unique.Get4StatusEffectsGoal;
@@ -481,6 +486,55 @@ public class DefaultGoalRegister {
         INSTANCE.register(GoalType.USE_GLOW_INK_NETHER, UseGlowInkNetherGoal.class);
         INSTANCE.register(GoalType.USE_GLOW_INK_WARPED, UseGlowInkWarpedGoal.class);
         INSTANCE.register(GoalType.WEAR_COPPER_ARMOR, WearCopperArmorGoal.class);
+
+        INSTANCE.register(GoalType.BREAK_ANY_ARMOR, BreakAnyArmorGoal.class);
+        INSTANCE.register(GoalType.BREAK_ANY_TOOL, BreakAnyToolGoal.class);
+        INSTANCE.register(GoalType.BREAK_FISHING_ROD, BreakFishingRodGoal.class);
+        INSTANCE.register(GoalType.BREAK_SHIELD, BreakShieldGoal.class);
+        INSTANCE.register(GoalType.PLACE_HANGING_SIGN, PlaceHangingSignGoal.class);
+        INSTANCE.register(GoalType.PLACE_PAINTING, PlacePaintingGoal.class);
+        INSTANCE.register(GoalType.COMPOST_3_UNIQUE_FOODS, Compost3UniqueFoodsGoal.class);
+        INSTANCE.register(GoalType.COMPOST_5_UNIQUE_FOODS, Compost5UniqueFoodsGoal.class);
+        INSTANCE.register(GoalType.COMPOST_7_UNIQUE_FOODS, Compost7UniqueFoodsGoal.class);
+        INSTANCE.register(GoalType.CONSTRUCT_COPPER_GOLEM, ConstructCopperGolemGoal.class);
+        INSTANCE.register(GoalType.DUPLICATE_ALLAY, DuplicateAllayGoal.class, new GoalRequirements.Builder()
+                .structures(List.of(PILLAGER_OUTPOST, WOODLAND_MANSION))
+                .build()
+        );
+        INSTANCE.register(GoalType.DUPLICATE_ARMOR_TRIM, DuplicateArmorTrimGoal.class);
+        INSTANCE.register(GoalType.EAT_ALL_SOUPS, EatAllSoupsGoal.class, GoalRequirements.RABBIT_BIOMES);
+        INSTANCE.register(GoalType.ENRAGE_ENDERMAN, EnrageEndermanGoal.class);
+        INSTANCE.register(GoalType.EXPLODE_END_CRYSTAL, ExplodeEndCrystalGoal.class);
+        INSTANCE.register(GoalType.USE_GOLDEN_DANDELION, UseGoldenDandelionGoal.class);
+        INSTANCE.register(GoalType.FILL_DECORATED_POT, FillDecoratedPotGoal.class);
+        INSTANCE.register(GoalType.LEASH_4_UNIQUE_MOBS, Leash4UniqueMobsGoal.class);
+        INSTANCE.register(GoalType.LEASH_6_UNIQUE_MOBS, Leash6UniqueMobsGoal.class);
+        INSTANCE.register(GoalType.LEASH_8_UNIQUE_MOBS, Leash8UniqueMobsGoal.class);
+        INSTANCE.register(GoalType.LEASH_IRON_GOLEM, LeashIronGolemGoal.class);
+        INSTANCE.register(GoalType.LOCK_MAP, LockMapGoal.class);
+        INSTANCE.register(GoalType.USE_CARTOGRAPHY_TABLE, UseCartographyTableGoal.class);
+        INSTANCE.register(GoalType.MINE_3_TYPES_OF_ICE, Mine3TypesOfIceGoal.class, new GoalRequirements.Builder()
+                .biomes(List.of(ICE_SPIKES, FROZEN_OCEAN, DEEP_FROZEN_OCEAN, FROZEN_PEAKS))
+                .build()
+        );
+        INSTANCE.register(GoalType.NAME_GHAST_DINNERBONE, NameGhastDinnerboneGoal.class);
+        INSTANCE.register(GoalType.NAME_SHEEP_JEB, NameSheepJebGoal.class);
+        INSTANCE.register(GoalType.NAME_IRON_GOLEM_DINNERBONE, NameIronGolemDinnerboneGoal.class);
+        INSTANCE.register(GoalType.OBTAIN_STACK_OF_64, ObtainStackOf64Goal.class);
+        INSTANCE.register(GoalType.SPY_10_UNIQUE_MOBS, Spy10UniqueMobsGoal.class);
+        INSTANCE.register(GoalType.SPY_15_UNIQUE_MOBS, Spy15UniqueMobsGoal.class);
+        INSTANCE.register(GoalType.SPY_20_UNIQUE_MOBS, Spy20UniqueMobsGoal.class);
+        INSTANCE.register(GoalType.SPY_25_UNIQUE_MOBS, Spy25UniqueMobsGoal.class);
+        INSTANCE.register(GoalType.SPY_ENDERMAN, SpyEndermanGoal.class);
+        INSTANCE.register(GoalType.SPY_IRON_GOLEM, SpyIronGolemGoal.class, GoalRequirements.VILLAGE);
+        // Only found in bastions, which can't be located before the match.
+        INSTANCE.register(GoalType.SPY_PIGLIN_BRUTE, SpyPiglinBruteGoal.class, GoalRequirements.NOT_IN_RANDOM_POOL);
+        INSTANCE.register(GoalType.PEARL_THROUGH_NETHER_PORTAL, PearlThroughNetherPortalGoal.class);
+        INSTANCE.register(GoalType.VISIT_ALL_CAVE_BIOMES, VisitAllCaveBiomesGoal.class, new GoalRequirements.Builder()
+                .allBiomes(List.of(LUSH_CAVES, DRIPSTONE_CAVES, DEEP_DARK))
+                .build()
+        );
+        INSTANCE.register(GoalType.WEAR_UNIQUE_ARMOR, WearUniqueArmorGoal.class);
 
     }
 

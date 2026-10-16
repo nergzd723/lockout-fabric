@@ -18,6 +18,7 @@ import net.minecraft.server.players.PlayerList;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.level.block.Block;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -38,6 +39,10 @@ public class Lockout {
     public final Map<LockoutTeam, Integer> killedArthropods = new HashMap<>();
     public final Map<LockoutTeam, LinkedHashSet<Item>> foodTypesEaten = new HashMap<>();
     public final Map<LockoutTeam, LinkedHashSet<Item>> uniqueItemsCraftedByTeam = new HashMap<>();
+    public final Map<LockoutTeam, LinkedHashSet<Item>> compostedFoods = new HashMap<>();
+    public final Map<LockoutTeam, LinkedHashSet<EntityType<?>>> spiedMobs = new HashMap<>();
+    public final Map<LockoutTeam, LinkedHashSet<Block>> iceTypesMined = new HashMap<>();
+    public final Map<LockoutTeam, LinkedHashSet<Identifier>> biomesVisited = new HashMap<>();
     public final Map<LockoutTeam, LinkedHashSet<Identifier>> uniqueAdvancements = new HashMap<>();
     public final Map<LockoutTeam, Double> damageTaken = new HashMap<>();
     public final Map<LockoutTeam, Double> damageDealt = new HashMap<>();

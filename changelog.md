@@ -24,6 +24,24 @@
     - Use Glow Ink on Warped Sign, Use Glow Ink on Crimson or Warped Sign
     - Wear Full Copper Armor
 - 'Obtain Gilded Blackstone' is not in the random goal pool, since bastions can't be located before the match.
+- Added 38 more goals:
+    - Break any Armor Piece, Break any Tool, Break Fishing Rod, Break Shield
+    - Place a Hanging Sign, Place Painting
+    - Compost 3/5/7 Unique Foods (counted per team)
+    - Construct a Copper Golem, Duplicate Allay, Duplicate any Armor Trim
+    - Eat every type of Soup
+    - Enrage Enderman, Explode End Crystal, Feed Golden Dandelion to any Baby Mob, Fill a Decorated Pot
+    - Leash 4/6/8 unique Mobs at once, Leash an Iron Golem
+    - Lock a Map using Cartography Table, Use Cartography Table
+    - Mine 3 types of Ice
+    - Name a Ghast 'Dinnerbone', Name a Sheep 'jeb_', Name an Iron Golem 'Dinnerbone'
+    - Obtain a stack of any Item
+    - Spy on 10/15/20/25 Unique Mobs (counted per team), Spy on Enderman, Spy on Iron Golem, Spy on Piglin Brute
+    - Teleport through Nether Portal using Ender Pearl
+    - Visit all Cave Biomes
+    - Wear Full Armor with different materials
+- 'Spy on Piglin Brute' is not in the random goal pool, since bastions can't be located before the match.
+- 'Visit all Cave Biomes' only appears when Lush Caves, Dripstone Caves and the Deep Dark are all near spawn.
 
 ## Lockout v0.9.3
 - Fixed spectators getting advancements causing a crash

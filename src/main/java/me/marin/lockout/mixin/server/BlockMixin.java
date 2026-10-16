@@ -1,5 +1,8 @@
 package me.marin.lockout.mixin.server;
 
+import me.marin.lockout.LockoutTeamServer;
+import me.marin.lockout.lockout.goals.mine.Mine3TypesOfIceGoal;
+import java.util.LinkedHashSet;
 import me.marin.lockout.Lockout;
 import me.marin.lockout.lockout.Goal;
 import me.marin.lockout.lockout.interfaces.MineBlockGoal;
@@ -22,6 +25,17 @@ public class BlockMixin {
         if (player.level().isClientSide()) return;
         Lockout lockout = LockoutServer.lockout;
         if (!Lockout.isLockoutRunning(lockout)) return;
+
+        if (Mine3TypesOfIceGoal.ICE.contains(state.getBlock()) && lockout.isLockoutPlayer(player.getUUID())) {
+            LockoutTeamServer team = (LockoutTeamServer) lockout.getPlayerTeam(player.getUUID());
+            if (lockout.iceTypesMined.computeIfAbsent(team, t -> new LinkedHashSet<>()).add(state.getBlock())) {
+                for (Goal goal : lockout.getBoard().getGoals()) {
+                    if (goal instanceof Mine3TypesOfIceGoal mineIceGoal) {
+                        mineIceGoal.evaluate(team);
+                    }
+                }
+            }
+        }
 
         for (Goal goal : lockout.getBoard().getGoals()) {
             if (goal == null) continue;

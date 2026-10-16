@@ -6,6 +6,8 @@ import me.marin.lockout.Lockout;
 import me.marin.lockout.LockoutTeamServer;
 import me.marin.lockout.lockout.Goal;
 import me.marin.lockout.lockout.goals.have_more.HaveMostUniqueCraftsGoal;
+import me.marin.lockout.lockout.goals.misc.DuplicateArmorTrimGoal;
+import me.marin.lockout.lockout.goals.obtain.Obtain2UniqueArmorTrimsGoal;
 import me.marin.lockout.lockout.interfaces.CraftUniqueItemsGoal;
 import me.marin.lockout.server.LockoutServer;
 import net.minecraft.ChatFormatting;
@@ -53,18 +55,19 @@ public class CraftingResultSlotMixin {
 
         if (lockout.isLockoutPlayer(player.getUUID())) {
             LockoutTeamServer team = (LockoutTeamServer) lockout.getPlayerTeam(player.getUUID());
-            LinkedHashSet<Item> teamCrafts = lockout.uniqueItemsCraftedByTeam.computeIfAbsent(team, t -> new LinkedHashSet<>());
-            if (teamCrafts.add(stack.getItem())) {
-                for (Goal goal : lockout.getBoard().getGoals()) {
-                    if (goal == null) continue;
-                    if (goal.isCompleted()) continue;
+            boolean newTeamCraft = lockout.uniqueItemsCraftedByTeam.computeIfAbsent(team, t -> new LinkedHashSet<>()).add(stack.getItem());
+            boolean armorTrim = Obtain2UniqueArmorTrimsGoal.ARMOR_TRIMS.contains(stack.getItem());
 
-                    if (goal instanceof CraftUniqueItemsGoal craftUniqueItemsGoal) {
-                        team.sendTooltipUpdate(craftUniqueItemsGoal);
-                        if (teamCrafts.size() >= craftUniqueItemsGoal.getAmount()) {
-                            lockout.completeGoal(goal, team);
-                        }
-                    }
+            for (Goal goal : lockout.getBoard().getGoals()) {
+                if (goal == null) continue;
+                if (goal.isCompleted()) continue;
+
+                if (newTeamCraft && goal instanceof CraftUniqueItemsGoal craftUniqueItemsGoal) {
+                    craftUniqueItemsGoal.evaluate(team);
+                }
+                // Trim templates can only be crafted by duplicating one
+                if (armorTrim && goal instanceof DuplicateArmorTrimGoal) {
+                    lockout.completeGoal(goal, player);
                 }
             }
         }

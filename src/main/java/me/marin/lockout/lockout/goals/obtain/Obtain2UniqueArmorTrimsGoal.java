@@ -9,7 +9,7 @@ import java.util.List;
 
 public class Obtain2UniqueArmorTrimsGoal extends ObtainSomeOfTheItemsGoal {
 
-    private static final List<Item> ITEMS = List.of(
+    public static final List<Item> ARMOR_TRIMS = List.of(
             Items.SENTRY_ARMOR_TRIM_SMITHING_TEMPLATE, Items.DUNE_ARMOR_TRIM_SMITHING_TEMPLATE, Items.COAST_ARMOR_TRIM_SMITHING_TEMPLATE,
             Items.WILD_ARMOR_TRIM_SMITHING_TEMPLATE, Items.WARD_ARMOR_TRIM_SMITHING_TEMPLATE, Items.EYE_ARMOR_TRIM_SMITHING_TEMPLATE,
             Items.VEX_ARMOR_TRIM_SMITHING_TEMPLATE, Items.TIDE_ARMOR_TRIM_SMITHING_TEMPLATE, Items.SNOUT_ARMOR_TRIM_SMITHING_TEMPLATE,
@@ -29,7 +29,7 @@ public class Obtain2UniqueArmorTrimsGoal extends ObtainSomeOfTheItemsGoal {
 
     @Override
     public List<Item> getItems() {
-        return ITEMS;
+        return ARMOR_TRIMS;
     }
 
     @Override

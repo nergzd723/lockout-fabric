@@ -1,5 +1,10 @@
 package me.marin.lockout.mixin.server;
 
+import me.marin.lockout.lockout.goals.misc.LockMapGoal;
+import me.marin.lockout.lockout.goals.workstation.UseCartographyTableGoal;
+import net.minecraft.world.inventory.CartographyTableMenu;
+import net.minecraft.world.item.MapItem;
+import net.minecraft.world.level.saveddata.maps.MapItemSavedData;
 import me.marin.lockout.Lockout;
 import me.marin.lockout.lockout.Goal;
 import me.marin.lockout.lockout.goals.workstation.UseLoomGoal;
@@ -36,6 +41,16 @@ public class SlotMixin {
                 }
             }
 
+            if (player.containerMenu instanceof CartographyTableMenu cartographyTableMenu && (Object) this == cartographyTableMenu.slots.get(CartographyTableMenu.RESULT_SLOT)) {
+                if (goal instanceof UseCartographyTableGoal) {
+                    lockout.completeGoal(goal, player);
+                }
+                // The map is locked by the time the result slot hands it over.
+                MapItemSavedData mapData = MapItem.getSavedData(stack, player.level());
+                if (goal instanceof LockMapGoal && mapData != null && mapData.locked) {
+                    lockout.completeGoal(goal, player);
+                }
+            }
             if (goal instanceof UseLoomGoal) {
                 if (player.containerMenu instanceof LoomMenu loomScreenHandler) {
                     if ((Object) this == loomScreenHandler.getResultSlot()) {

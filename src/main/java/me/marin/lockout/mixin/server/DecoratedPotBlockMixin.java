@@ -1,0 +1,56 @@
+package me.marin.lockout.mixin.server;
+
+import com.llamalad7.mixinextras.sugar.Share;
+import com.llamalad7.mixinextras.sugar.ref.LocalIntRef;
+import me.marin.lockout.Lockout;
+import me.marin.lockout.lockout.Goal;
+import me.marin.lockout.lockout.goals.misc.FillDecoratedPotGoal;
+import me.marin.lockout.server.LockoutServer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.DecoratedPotBlock;
+import net.minecraft.world.level.block.entity.DecoratedPotBlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+@Mixin(DecoratedPotBlock.class)
+public class DecoratedPotBlockMixin {
+
+    @Inject(method = "useItemOn", at = @At("HEAD"))
+    private void beforeInsert(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult, CallbackInfoReturnable<InteractionResult> cir, @Share("countBefore") LocalIntRef countBefore) {
+        if (level.getBlockEntity(pos) instanceof DecoratedPotBlockEntity pot) {
+            countBefore.set(pot.getTheItem().getCount());
+        }
+    }
+
+    @Inject(method = "useItemOn", at = @At("RETURN"))
+    private void afterInsert(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult, CallbackInfoReturnable<InteractionResult> cir, @Share("countBefore") LocalIntRef countBefore) {
+        if (level.isClientSide()) return;
+        if (!(level.getBlockEntity(pos) instanceof DecoratedPotBlockEntity pot)) return;
+
+        ItemStack potItem = pot.getTheItem();
+        // Only the insertion that fills the pot counts.
+        if (potItem.isEmpty() || potItem.getCount() < potItem.getMaxStackSize() || countBefore.get() >= potItem.getCount()) return;
+
+        Lockout lockout = LockoutServer.lockout;
+        if (!Lockout.isLockoutRunning(lockout)) return;
+
+        for (Goal goal : lockout.getBoard().getGoals()) {
+            if (goal == null) continue;
+            if (goal.isCompleted()) continue;
+
+            if (goal instanceof FillDecoratedPotGoal) {
+                lockout.completeGoal(goal, player);
+            }
+        }
+    }
+
+}

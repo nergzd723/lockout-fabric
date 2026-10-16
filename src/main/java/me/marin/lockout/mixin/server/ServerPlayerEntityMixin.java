@@ -2,13 +2,19 @@ package me.marin.lockout.mixin.server;
 
 import me.marin.lockout.CompassItemHandler;
 import me.marin.lockout.Lockout;
+import me.marin.lockout.lockout.Goal;
+import me.marin.lockout.lockout.interfaces.BreakItemGoal;
+import me.marin.lockout.lockout.interfaces.PlaceItemGoal;
 import me.marin.lockout.server.LockoutServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.stats.Stat;
+import net.minecraft.stats.Stats;
 import net.minecraft.util.Prediction;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -52,6 +58,31 @@ public class ServerPlayerEntityMixin {
         }
         if (CompassItemHandler.isCompass(((PlayerInventoryAccessor)player.getInventory()).getEquipment().get(EquipmentSlot.OFFHAND))) {
             LockoutServer.compassHandler.compassSlots.put(player.getUUID(), 40);
+        }
+    }
+
+    @Inject(method = "awardStat(Lnet/minecraft/stats/Stat;I)V", at = @At("HEAD"))
+    public void onAwardStat(Stat<?> stat, int amount, CallbackInfo ci) {
+        Lockout lockout = LockoutServer.lockout;
+        if (!Lockout.isLockoutRunning(lockout)) return;
+        if (!(stat.getValue() instanceof Item item)) return;
+
+        boolean broken = stat.getType() == Stats.ITEM_BROKEN;
+        boolean used = stat.getType() == Stats.ITEM_USED;
+        if (!broken && !used) return;
+
+        Player player = (Player) (Object) this;
+        for (Goal goal : lockout.getBoard().getGoals()) {
+            if (goal == null) continue;
+            if (goal.isCompleted()) continue;
+
+            if (broken && goal instanceof BreakItemGoal breakItemGoal && breakItemGoal.isBrokenItem(item)) {
+                lockout.completeGoal(goal, player);
+            }
+            // Successfully using an item on a block (placing it) awards ITEM_USED.
+            if (used && goal instanceof PlaceItemGoal placeItemGoal && placeItemGoal.isPlacedItem(item)) {
+                lockout.completeGoal(goal, player);
+            }
         }
     }
 

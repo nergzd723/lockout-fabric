@@ -27,7 +27,8 @@ public class GoalGroup {
             WEAR_LEATHER_ARMOR, WEAR_COPPER_ARMOR, WEAR_IRON_ARMOR, WEAR_GOLDEN_ARMOR, WEAR_DIAMOND_ARMOR
     ), 1);
     public static final GoalGroup ARMOR_SPECIAL = new GoalGroup(List.of(
-            WEAR_COLORED_LEATHER_ARMOR_PIECE, WEAR_UNIQUE_COLORED_LEATHER_ARMOR, WEAR_CARVED_PUMPKIN_FOR_5_MINUTES, WEAR_CHAIN_ARMOR_PIECE, FILL_ARMOR_STAND
+            WEAR_COLORED_LEATHER_ARMOR_PIECE, WEAR_UNIQUE_COLORED_LEATHER_ARMOR, WEAR_CARVED_PUMPKIN_FOR_5_MINUTES, WEAR_CHAIN_ARMOR_PIECE, FILL_ARMOR_STAND,
+            WEAR_UNIQUE_ARMOR
     ), 2);
     public static final GoalGroup KILL_MOB = new GoalGroup(List.of(
             KILL_COLORED_SHEEP, KILL_ELDER_GUARDIAN, KILL_GHAST, KILL_SNOW_GOLEM, KILL_SNOW_GOLEM_IN_NETHER, KILL_SILVERFISH, KILL_STRAY, KILL_WITCH, KILL_ZOMBIE_VILLAGER, KILL_ZOGLIN, KILL_BAT,
@@ -44,7 +45,7 @@ public class GoalGroup {
     ), 1);
     public static final GoalGroup FORTRESS = new GoalGroup(List.of(
             BREW_HEALING_POTION, BREW_INVISIBILITY_POTION, BREW_LINGERING_POTION, BREW_POISON_POTION, BREW_SWIFTNESS_POTION, BREW_WATER_BREATHING_POTION, BREW_WEAKNESS_POTION,
-            PLACE_END_CRYSTAL, OBTAIN_ENDER_CHEST, USE_BREWING_STAND, OBTAIN_ALL_HORSE_ARMOR
+            PLACE_END_CRYSTAL, OBTAIN_ENDER_CHEST, USE_BREWING_STAND, OBTAIN_ALL_HORSE_ARMOR, EXPLODE_END_CRYSTAL
     ), 3);
     public static final GoalGroup BREW_POTION = new GoalGroup(List.of(
             BREW_HEALING_POTION, BREW_INVISIBILITY_POTION, BREW_LINGERING_POTION, BREW_POISON_POTION, BREW_SWIFTNESS_POTION, BREW_WATER_BREATHING_POTION, BREW_WEAKNESS_POTION
@@ -81,7 +82,7 @@ public class GoalGroup {
             DIE_BY_DROWNING, DIE_TO_VOID, DIE_TO_PUFFERFISH, DIE_TO_TRIDENT, DIE_TO_WARDEN
     ), 3);
     public static final GoalGroup BIOME = new GoalGroup(List.of(
-            VISIT_BADLANDS_BIOME, VISIT_ICE_SPIKES_BIOME, VISIT_MUSHROOM_BIOME, GET_HOT_TOURIST_DESTINATIONS_ADVANCEMENT
+            VISIT_BADLANDS_BIOME, VISIT_ICE_SPIKES_BIOME, VISIT_MUSHROOM_BIOME, GET_HOT_TOURIST_DESTINATIONS_ADVANCEMENT, VISIT_ALL_CAVE_BIOMES
     ), 1);
     public static final GoalGroup OPPONENT_HARD = new GoalGroup(List.of(
             OPPONENT_OBTAINS_CRAFTING_TABLE, OPPONENT_JUMPS, OPPONENT_TOUCHES_WATER
@@ -186,6 +187,46 @@ public class GoalGroup {
     public static final GoalGroup NETHERITE = new GoalGroup(List.of(
             OBTAIN_ANCIENT_DEBRIS, OBTAIN_NETHERITE_SCRAP, OBTAIN_LODESTONE
     ), 1);
+    public static final GoalGroup BREAK_ITEM = new GoalGroup(List.of(
+            BREAK_ANY_ARMOR, BREAK_ANY_TOOL, BREAK_FISHING_ROD, BREAK_SHIELD
+    ), 2);
+    public static final GoalGroup UNIQUE_COMPOST = new GoalGroup(List.of(
+            COMPOST_3_UNIQUE_FOODS, COMPOST_5_UNIQUE_FOODS, COMPOST_7_UNIQUE_FOODS
+    ), 1);
+    public static final GoalGroup COMPOSTER = new GoalGroup(List.of(
+            COMPOST_3_UNIQUE_FOODS, COMPOST_5_UNIQUE_FOODS, COMPOST_7_UNIQUE_FOODS, USE_COMPOSTER
+    ), 2);
+    public static final GoalGroup SOUPS = new GoalGroup(List.of(
+            EAT_ALL_SOUPS, EAT_RABBIT_STEW, EAT_SUSPICIOUS_STEW, EAT_BEETROOT_SOUP
+    ), 1);
+    public static final GoalGroup END_CRYSTAL = new GoalGroup(List.of(
+            PLACE_END_CRYSTAL, EXPLODE_END_CRYSTAL
+    ), 1);
+    public static final GoalGroup LEASH_X_UNIQUE = new GoalGroup(List.of(
+            LEASH_4_UNIQUE_MOBS, LEASH_6_UNIQUE_MOBS, LEASH_8_UNIQUE_MOBS
+    ), 1);
+    public static final GoalGroup LEASH = new GoalGroup(List.of(
+            LEASH_4_UNIQUE_MOBS, LEASH_6_UNIQUE_MOBS, LEASH_8_UNIQUE_MOBS, LEASH_IRON_GOLEM
+    ), 2);
+    public static final GoalGroup CARTOGRAPHY = new GoalGroup(List.of(
+            LOCK_MAP, USE_CARTOGRAPHY_TABLE
+    ), 1);
+    public static final GoalGroup NAME_TAG = new GoalGroup(List.of(
+            NAME_GHAST_DINNERBONE, NAME_SHEEP_JEB, NAME_IRON_GOLEM_DINNERBONE
+    ), 1);
+    public static final GoalGroup SPY_X_UNIQUE = new GoalGroup(List.of(
+            SPY_10_UNIQUE_MOBS, SPY_15_UNIQUE_MOBS, SPY_20_UNIQUE_MOBS, SPY_25_UNIQUE_MOBS
+    ), 1);
+    public static final GoalGroup SPYGLASS = new GoalGroup(List.of(
+            SPY_10_UNIQUE_MOBS, SPY_15_UNIQUE_MOBS, SPY_20_UNIQUE_MOBS, SPY_25_UNIQUE_MOBS,
+            SPY_ENDERMAN, SPY_IRON_GOLEM, SPY_PIGLIN_BRUTE, GET_ANY_SPYGLASS_ADVANCEMENT
+    ), 2);
+    public static final GoalGroup ENDERMAN = new GoalGroup(List.of(
+            ENRAGE_ENDERMAN, SPY_ENDERMAN
+    ), 1);
+    public static final GoalGroup IRON_GOLEM = new GoalGroup(List.of(
+            LEASH_IRON_GOLEM, NAME_IRON_GOLEM_DINNERBONE, SPY_IRON_GOLEM, DIE_BY_IRON_GOLEM, GET_HIRED_HELP_ADVANCEMENT
+    ), 2);
 
     static {
         KILL_UNIQUE_HOSTILES.requirePredecessor.add(KILL_13_UNIQUE_HOSTILE_MOBS);
@@ -249,6 +290,19 @@ public class GoalGroup {
         GOAL_GROUPS.add(UNIQUE_CRAFTS);
         GOAL_GROUPS.add(XP_LEVELS);
         GOAL_GROUPS.add(NETHERITE);
+        GOAL_GROUPS.add(BREAK_ITEM);
+        GOAL_GROUPS.add(UNIQUE_COMPOST);
+        GOAL_GROUPS.add(COMPOSTER);
+        GOAL_GROUPS.add(SOUPS);
+        GOAL_GROUPS.add(END_CRYSTAL);
+        GOAL_GROUPS.add(LEASH_X_UNIQUE);
+        GOAL_GROUPS.add(LEASH);
+        GOAL_GROUPS.add(CARTOGRAPHY);
+        GOAL_GROUPS.add(NAME_TAG);
+        GOAL_GROUPS.add(SPY_X_UNIQUE);
+        GOAL_GROUPS.add(SPYGLASS);
+        GOAL_GROUPS.add(ENDERMAN);
+        GOAL_GROUPS.add(IRON_GOLEM);
     }
 
 

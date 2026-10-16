@@ -54,6 +54,13 @@ public abstract class GoalRequirements {
         return Collections.emptyList();
     }
 
+    /**
+     * Whether every biome from {@link #getRequiredBiomes()} needs to be close to spawn, instead of just one.
+     */
+    public boolean requiresAllBiomes() {
+        return false;
+    }
+
 
     /**
      * At least one of these structures needs to be close to spawn. Keys can be found in {@link BuiltinStructures}.
@@ -75,7 +82,12 @@ public abstract class GoalRequirements {
         boolean hasRequiredBiome = true;
         if (getRequiredBiomes() != null) {
             for (ResourceKey<Biome> biome : getRequiredBiomes()) {
-                if (biomes.get(biome).wasLocated()) {
+                if (requiresAllBiomes()) {
+                    if (!biomes.get(biome).wasLocated()) {
+                        hasRequiredBiome = false;
+                        break;
+                    }
+                } else if (biomes.get(biome).wasLocated()) {
                     hasRequiredBiome = true;
                     break;
                 } else {
@@ -105,10 +117,16 @@ public abstract class GoalRequirements {
         private List<ResourceKey<Biome>> biomes = Collections.emptyList();
         private List<ResourceKey<Structure>> structures = Collections.emptyList();
         private boolean partOfRandomPool = true;
+        private boolean allBiomes = false;
         private Function<Integer, Boolean> isTeamSizeOk = (size) -> true;
 
         public Builder biomes(List<ResourceKey<Biome>> biomes) {
             this.biomes = biomes;
+            return this;
+        }
+        public Builder allBiomes(List<ResourceKey<Biome>> biomes) {
+            this.biomes = biomes;
+            this.allBiomes = true;
             return this;
         }
         public Builder structures(List<ResourceKey<Structure>> structures) {
@@ -129,6 +147,11 @@ public abstract class GoalRequirements {
                 @Override
                 public List<ResourceKey<Biome>> getRequiredBiomes() {
                     return biomes;
+                }
+
+                @Override
+                public boolean requiresAllBiomes() {
+                    return allBiomes;
                 }
 
                 @Override

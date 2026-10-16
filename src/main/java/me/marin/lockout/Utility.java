@@ -14,7 +14,10 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.FormattedCharSequence;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.chat.CommonComponents;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -201,6 +204,10 @@ public class Utility {
         context.pose().translate(0.0F, 0.0F);
         context.text(textRenderer, count, x + 19 - 2 - textRenderer.width(count), y + 6 + 3, -1, true);
         context.pose().popMatrix();
+    }
+
+    public static String itemName(Item item) {
+        return item.components().getOrDefault(DataComponents.ITEM_NAME, CommonComponents.EMPTY).getString();
     }
 
     public static List<ServerPlayer> getSpectators(Lockout lockout, MinecraftServer server) {

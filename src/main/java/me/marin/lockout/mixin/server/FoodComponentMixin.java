@@ -1,5 +1,6 @@
 package me.marin.lockout.mixin.server;
 
+import me.marin.lockout.lockout.goals.consume.EatAllSoupsGoal;
 import me.marin.lockout.Lockout;
 import me.marin.lockout.LockoutTeamServer;
 import me.marin.lockout.lockout.Goal;
@@ -38,10 +39,16 @@ public class FoodComponentMixin {
         LockoutTeamServer team = (LockoutTeamServer) lockout.getPlayerTeam(player.getUUID());
 
 
+        boolean newFood = itemStack.get(DataComponents.FOOD) != null
+                && lockout.foodTypesEaten.computeIfAbsent(team, t -> new LinkedHashSet<>()).add(itemStack.getItem());
+
         for (Goal goal : lockout.getBoard().getGoals()) {
             if (goal == null) continue;
             if (goal.isCompleted()) continue;
 
+            if (newFood && goal instanceof EatAllSoupsGoal eatAllSoupsGoal) {
+                eatAllSoupsGoal.evaluate(team);
+            }
             if (goal instanceof ConsumeItemGoal consumeItemGoal) {
                 if (consumeItemGoal.getItem().equals(itemStack.getItem())) {
                     lockout.completeGoal(goal, player);

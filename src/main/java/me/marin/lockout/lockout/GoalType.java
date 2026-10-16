@@ -288,4 +288,43 @@ public class GoalType {
     public static final String USE_GLOW_INK_WARPED = "USE_GLOW_INK_WARPED";
     public static final String WEAR_COPPER_ARMOR = "WEAR_COPPER_ARMOR";
 
+    public static final String BREAK_ANY_ARMOR = "BREAK_ANY_ARMOR";
+    public static final String BREAK_ANY_TOOL = "BREAK_ANY_TOOL";
+    public static final String BREAK_FISHING_ROD = "BREAK_FISHING_ROD";
+    public static final String BREAK_SHIELD = "BREAK_SHIELD";
+    public static final String PLACE_HANGING_SIGN = "PLACE_HANGING_SIGN";
+    public static final String PLACE_PAINTING = "PLACE_PAINTING";
+    public static final String COMPOST_3_UNIQUE_FOODS = "COMPOST_3_UNIQUE_FOODS";
+    public static final String COMPOST_5_UNIQUE_FOODS = "COMPOST_5_UNIQUE_FOODS";
+    public static final String COMPOST_7_UNIQUE_FOODS = "COMPOST_7_UNIQUE_FOODS";
+    public static final String CONSTRUCT_COPPER_GOLEM = "CONSTRUCT_COPPER_GOLEM";
+    public static final String DUPLICATE_ALLAY = "DUPLICATE_ALLAY";
+    public static final String DUPLICATE_ARMOR_TRIM = "DUPLICATE_ARMOR_TRIM";
+    public static final String EAT_ALL_SOUPS = "EAT_ALL_SOUPS";
+    public static final String ENRAGE_ENDERMAN = "ENRAGE_ENDERMAN";
+    public static final String EXPLODE_END_CRYSTAL = "EXPLODE_END_CRYSTAL";
+    public static final String USE_GOLDEN_DANDELION = "USE_GOLDEN_DANDELION";
+    public static final String FILL_DECORATED_POT = "FILL_DECORATED_POT";
+    public static final String LEASH_4_UNIQUE_MOBS = "LEASH_4_UNIQUE_MOBS";
+    public static final String LEASH_6_UNIQUE_MOBS = "LEASH_6_UNIQUE_MOBS";
+    public static final String LEASH_8_UNIQUE_MOBS = "LEASH_8_UNIQUE_MOBS";
+    public static final String LEASH_IRON_GOLEM = "LEASH_IRON_GOLEM";
+    public static final String LOCK_MAP = "LOCK_MAP";
+    public static final String USE_CARTOGRAPHY_TABLE = "USE_CARTOGRAPHY_TABLE";
+    public static final String MINE_3_TYPES_OF_ICE = "MINE_3_TYPES_OF_ICE";
+    public static final String NAME_GHAST_DINNERBONE = "NAME_GHAST_DINNERBONE";
+    public static final String NAME_SHEEP_JEB = "NAME_SHEEP_JEB";
+    public static final String NAME_IRON_GOLEM_DINNERBONE = "NAME_IRON_GOLEM_DINNERBONE";
+    public static final String OBTAIN_STACK_OF_64 = "OBTAIN_STACK_OF_64";
+    public static final String SPY_10_UNIQUE_MOBS = "SPY_10_UNIQUE_MOBS";
+    public static final String SPY_15_UNIQUE_MOBS = "SPY_15_UNIQUE_MOBS";
+    public static final String SPY_20_UNIQUE_MOBS = "SPY_20_UNIQUE_MOBS";
+    public static final String SPY_25_UNIQUE_MOBS = "SPY_25_UNIQUE_MOBS";
+    public static final String SPY_ENDERMAN = "SPY_ENDERMAN";
+    public static final String SPY_IRON_GOLEM = "SPY_IRON_GOLEM";
+    public static final String SPY_PIGLIN_BRUTE = "SPY_PIGLIN_BRUTE";
+    public static final String PEARL_THROUGH_NETHER_PORTAL = "PEARL_THROUGH_NETHER_PORTAL";
+    public static final String VISIT_ALL_CAVE_BIOMES = "VISIT_ALL_CAVE_BIOMES";
+    public static final String WEAR_UNIQUE_ARMOR = "WEAR_UNIQUE_ARMOR";
+
 }

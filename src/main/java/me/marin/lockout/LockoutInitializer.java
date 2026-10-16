@@ -175,6 +175,16 @@ public class LockoutInitializer implements ModInitializer {
             }
 
             {
+                // SetScoutingTime command
+
+                var setScoutingTimeRoot = Commands.literal("SetScoutingTime").requires(PERMISSIONS).build();
+                var seconds = Commands.argument("seconds", IntegerArgumentType.integer(0, 60)).executes(LockoutServer::setScoutingTime).build();
+
+                dispatcher.getRoot().addChild(setScoutingTimeRoot);
+                setScoutingTimeRoot.addChild(seconds);
+            }
+
+            {
                 // SetBoardSize command
 
                 var setBoardTimeRoot = Commands.literal("SetBoardSize").requires(PERMISSIONS).build();

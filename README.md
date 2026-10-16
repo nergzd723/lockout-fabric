@@ -63,6 +63,9 @@ offered goals is picked at random. Once the board is full, the match starts as u
 - `/SetDraftSettings <offer size> <pick seconds> <rerolls>` - goals offered per pick (1-5), seconds per pick (3-120)
   and rerolls per team (0-10). Defaults are 2, 10 and 1, and can be changed in `config/lockout.json`.
 
+Before the first pick, drafting players get 15 seconds to scout: they're frozen in place, can jump to toggle a
+bird's-eye view 30 blocks up, and get a Spyglass to zoom with. Change it with `/SetScoutingTime <seconds>` (0 turns it off).
+
 The board size from `/SetBoardSize` applies. Press Esc to close the draft screen; it opens again on the next pick.
 
 # Server restarts

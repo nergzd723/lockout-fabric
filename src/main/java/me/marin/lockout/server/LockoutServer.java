@@ -66,6 +66,7 @@ public class LockoutServer {
     private static int draftOfferSize;
     private static int draftPickSeconds;
     private static int draftRerolls;
+    private static int draftScoutingSeconds;
 
     public static DraftSession draftSession;
 
@@ -99,6 +100,7 @@ public class LockoutServer {
         draftOfferSize = LockoutConfig.getInstance().draftOfferSize;
         draftPickSeconds = LockoutConfig.getInstance().draftPickSeconds;
         draftRerolls = LockoutConfig.getInstance().draftRerolls;
+        draftScoutingSeconds = LockoutConfig.getInstance().draftScoutingSeconds;
 
         if (isInitialized) return;
         isInitialized = true;
@@ -122,6 +124,8 @@ public class LockoutServer {
         ServerLifecycleEvents.SERVER_STOPPING.register(stoppingServer -> {
             // Don't let the freeze (invulnerability is saved with the player) outlive the server; restoring freezes again.
             MatchPause.cancel(stoppingServer);
+            // Drafts aren't restored; release players from scouting.
+            cancelDraft();
             if (Lockout.isLockoutRunning(lockout)) {
                 MatchPersistence.save(stoppingServer, lockout);
             }
@@ -309,7 +313,7 @@ public class LockoutServer {
             player.setGameMode(draftingPlayers.contains(player.getUUID()) ? GameType.ADVENTURE : GameType.SPECTATOR);
         }
 
-        draftSession = new DraftSession(server, teams, boardSize, draftOfferSize, draftPickSeconds, draftRerolls);
+        draftSession = new DraftSession(server, teams, boardSize, draftOfferSize, draftPickSeconds, draftRerolls, draftScoutingSeconds);
         draftSession.start();
         return 1;
     }
@@ -696,6 +700,12 @@ public class LockoutServer {
         draftPickSeconds = context.getArgument("pick seconds", Integer.class);
         draftRerolls = context.getArgument("rerolls", Integer.class);
         context.getSource().sendSystemMessage(Component.nullToEmpty("Drafts now offer " + draftOfferSize + " goals per pick, with " + draftPickSeconds + "s per pick and " + draftRerolls + " reroll(s) per team."));
+        return 1;
+    }
+
+    public static int setScoutingTime(CommandContext<CommandSourceStack> context) {
+        draftScoutingSeconds = context.getArgument("seconds", Integer.class);
+        context.getSource().sendSystemMessage(Component.nullToEmpty(draftScoutingSeconds == 0 ? "Drafts start without scouting." : "Drafts start with " + draftScoutingSeconds + "s of scouting."));
         return 1;
     }
 

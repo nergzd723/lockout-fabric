@@ -45,9 +45,13 @@ public class DraftSession {
 
     private int ticksLeft;
     private boolean done = false;
+    private final int scoutingSeconds;
+    /** Set while players are scouting, before the first pick. */
+    private DraftScouting scouting;
 
-    public DraftSession(MinecraftServer server, List<LockoutTeamServer> teams, int boardSize, int offerSize, int pickSeconds, int rerolls) {
+    public DraftSession(MinecraftServer server, List<LockoutTeamServer> teams, int boardSize, int offerSize, int pickSeconds, int rerolls, int scoutingSeconds) {
         this.server = server;
+        this.scoutingSeconds = scoutingSeconds;
         this.teams = teams;
         this.boardSize = boardSize;
         this.offerSize = offerSize;
@@ -71,6 +75,15 @@ public class DraftSession {
     }
 
     public void start() {
+        if (scoutingSeconds > 0) {
+            scouting = new DraftScouting(server, teams, scoutingSeconds);
+            scouting.start();
+        } else {
+            beginPicking();
+        }
+    }
+
+    private void beginPicking() {
         if (teams.size() == 1) {
             broadcast(Component.literal("Drafting a " + boardSize + "x" + boardSize + " Blackout board."));
         } else {
@@ -83,6 +96,13 @@ public class DraftSession {
 
     public void tick() {
         if (done) return;
+        if (scouting != null) {
+            if (scouting.tick()) {
+                scouting = null;
+                beginPicking();
+            }
+            return;
+        }
         ticksLeft--;
         if (offer.isEmpty()) {
             // Ran out of goals to offer (only possible with a tiny goal pool).
@@ -105,7 +125,7 @@ public class DraftSession {
     }
 
     public void handleAction(ServerPlayer player, DraftActionPayload payload) {
-        if (done) return;
+        if (done || scouting != null) return;
         int team = getCurrentTeam();
         if (!teams.get(team).getPlayers().contains(player.getUUID())) {
             player.sendSystemMessage(Component.literal("It's not your team's turn to pick.").withStyle(ChatFormatting.RED));
@@ -188,6 +208,10 @@ public class DraftSession {
 
     public void cancel() {
         done = true;
+        if (scouting != null) {
+            scouting.end();
+            scouting = null;
+        }
         sendState(DraftStatePayload.Status.CANCELLED);
         broadcast(Component.literal("The draft was cancelled.").withStyle(ChatFormatting.RED));
     }

@@ -32,6 +32,8 @@ public class LockoutConfig {
     public int draftPickSeconds = 10;
     @SerializedName("draft rerolls")
     public int draftRerolls = 1;
+    @SerializedName("draft scouting seconds")
+    public int draftScoutingSeconds = 15;
 
     public static void load() {
         if (!Files.exists(CONFIG_PATH)) {
@@ -58,6 +60,7 @@ public class LockoutConfig {
         instance.draftOfferSize = 2;
         instance.draftPickSeconds = 10;
         instance.draftRerolls = 1;
+        instance.draftScoutingSeconds = 15;
     }
 
     private static void createConfigDir() {

@@ -1,3 +1,8 @@
+## Lockout v0.10.3
+- Drafts now start with scouting: drafting players are frozen for 15 seconds before the first pick, can jump to toggle
+  a bird's-eye view 30 blocks up, and get a Spyglass to zoom with (taken back afterwards).
+    - `/SetScoutingTime <seconds>` (0-60, 0 turns it off), default in the config file ('draft scouting seconds' 15)
+
 ## Lockout v0.10.2
 - Matches now survive a server restart. The match is saved in the world folder (every 30 seconds and when the server
   stops) and restored when the server starts again: board, teams, points, timer and all goal progress.

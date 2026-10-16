@@ -4,6 +4,7 @@ import me.marin.lockout.lockout.goals.biome.VisitAllCaveBiomesGoal;
 import me.marin.lockout.Lockout;
 import me.marin.lockout.LockoutTeamServer;
 import me.marin.lockout.lockout.Goal;
+import me.marin.lockout.lockout.interfaces.VisitUniqueBiomesGoal;
 import me.marin.lockout.lockout.interfaces.AdvancementGoal;
 import me.marin.lockout.lockout.interfaces.GetUniqueAdvancementsGoal;
 import me.marin.lockout.lockout.interfaces.VisitBiomeGoal;
@@ -89,6 +90,9 @@ public abstract class PlayerAdvancementTrackerMixin {
                 for (Goal goal : lockout.getBoard().getGoals()) {
                     if (goal instanceof VisitAllCaveBiomesGoal visitAllCaveBiomesGoal) {
                         visitAllCaveBiomesGoal.evaluate(team);
+                    }
+                    if (goal instanceof VisitUniqueBiomesGoal visitUniqueBiomesGoal) {
+                        visitUniqueBiomesGoal.evaluate(team);
                     }
                 }
             }

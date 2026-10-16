@@ -1,5 +1,6 @@
 package me.marin.lockout.server.handlers;
 
+import me.marin.lockout.lockout.goals.death.Die5UniqueWaysGoal;
 import me.marin.lockout.Lockout;
 import me.marin.lockout.LockoutTeam;
 import me.marin.lockout.LockoutTeamServer;
@@ -47,6 +48,15 @@ public class AfterDeathEventHandler implements ServerLivingEntityEvents.AfterDea
 
             lockout.deaths.putIfAbsent(team, 0);
             lockout.deaths.merge(team, 1, Integer::sum);
+
+            var damageType = source.typeHolder().unwrapKey();
+            if (damageType.isPresent() && lockout.deathTypes.computeIfAbsent(team, t -> new LinkedHashSet<>()).add(damageType.get().identifier())) {
+                for (Goal goal : lockout.getBoard().getGoals()) {
+                    if (goal instanceof Die5UniqueWaysGoal die5UniqueWaysGoal) {
+                        die5UniqueWaysGoal.evaluate((LockoutTeamServer) team);
+                    }
+                }
+            }
         }
         if (mobDied && killedByPlayer) {
             Player killer = (Player) entity.getKillCredit();

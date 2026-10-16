@@ -61,6 +61,14 @@ public abstract class GoalRequirements {
         return false;
     }
 
+    /**
+     * If not empty, at least one biome from each of these lists needs to be close to spawn.
+     * {@link #getRequiredBiomes()} then returns all of them, so they all get located.
+     */
+    public List<List<ResourceKey<Biome>>> getRequiredBiomeGroups() {
+        return Collections.emptyList();
+    }
+
 
     /**
      * At least one of these structures needs to be close to spawn. Keys can be found in {@link BuiltinStructures}.
@@ -80,7 +88,14 @@ public abstract class GoalRequirements {
 
     public final boolean isSatisfied(Map<ResourceKey<Biome>, LocateData> biomes, Map<ResourceKey<Structure>, LocateData> structures) {
         boolean hasRequiredBiome = true;
-        if (getRequiredBiomes() != null) {
+        if (!getRequiredBiomeGroups().isEmpty()) {
+            for (List<ResourceKey<Biome>> group : getRequiredBiomeGroups()) {
+                if (group.stream().noneMatch(biome -> biomes.get(biome).wasLocated())) {
+                    hasRequiredBiome = false;
+                    break;
+                }
+            }
+        } else if (getRequiredBiomes() != null) {
             for (ResourceKey<Biome> biome : getRequiredBiomes()) {
                 if (requiresAllBiomes()) {
                     if (!biomes.get(biome).wasLocated()) {
@@ -118,6 +133,7 @@ public abstract class GoalRequirements {
         private List<ResourceKey<Structure>> structures = Collections.emptyList();
         private boolean partOfRandomPool = true;
         private boolean allBiomes = false;
+        private List<List<ResourceKey<Biome>>> biomeGroups = Collections.emptyList();
         private Function<Integer, Boolean> isTeamSizeOk = (size) -> true;
 
         public Builder biomes(List<ResourceKey<Biome>> biomes) {
@@ -127,6 +143,11 @@ public abstract class GoalRequirements {
         public Builder allBiomes(List<ResourceKey<Biome>> biomes) {
             this.biomes = biomes;
             this.allBiomes = true;
+            return this;
+        }
+        public Builder oneBiomeFromEach(List<List<ResourceKey<Biome>>> groups) {
+            this.biomeGroups = groups;
+            this.biomes = groups.stream().flatMap(List::stream).toList();
             return this;
         }
         public Builder structures(List<ResourceKey<Structure>> structures) {
@@ -152,6 +173,11 @@ public abstract class GoalRequirements {
                 @Override
                 public boolean requiresAllBiomes() {
                     return allBiomes;
+                }
+
+                @Override
+                public List<List<ResourceKey<Biome>>> getRequiredBiomeGroups() {
+                    return biomeGroups;
                 }
 
                 @Override

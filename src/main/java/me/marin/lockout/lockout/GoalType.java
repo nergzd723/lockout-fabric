@@ -327,4 +327,23 @@ public class GoalType {
     public static final String VISIT_ALL_CAVE_BIOMES = "VISIT_ALL_CAVE_BIOMES";
     public static final String WEAR_UNIQUE_ARMOR = "WEAR_UNIQUE_ARMOR";
 
+    public static final String VISIT_10_UNIQUE_BIOMES = "VISIT_10_UNIQUE_BIOMES";
+    public static final String VISIT_15_UNIQUE_BIOMES = "VISIT_15_UNIQUE_BIOMES";
+    public static final String KILL_CREAKING = "KILL_CREAKING";
+    public static final String LOOT_ABANDONED_CAMP = "LOOT_ABANDONED_CAMP";
+    public static final String OBTAIN_SULFUR_CUBE_BUCKET = "OBTAIN_SULFUR_CUBE_BUCKET";
+    public static final String SLEEP_IN_STRAW_BED = "SLEEP_IN_STRAW_BED";
+    public static final String SHOOT_OPPONENT_WITH_ARROW = "SHOOT_OPPONENT_WITH_ARROW";
+    public static final String DIE_5_UNIQUE_WAYS = "DIE_5_UNIQUE_WAYS";
+    public static final String KILL_ZOMBIE_NAUTILUS = "KILL_ZOMBIE_NAUTILUS";
+    public static final String GET_SUBSPACE_BUBBLE_ADVANCEMENT = "GET_SUBSPACE_BUBBLE_ADVANCEMENT";
+    public static final String OBTAIN_ALL_EGGS = "OBTAIN_ALL_EGGS";
+    public static final String DEFLECT_PROJECTILE = "DEFLECT_PROJECTILE";
+    public static final String CURE_ZOMBIE_VILLAGER = "CURE_ZOMBIE_VILLAGER";
+    public static final String GET_RETURN_TO_SENDER_ADVANCEMENT = "GET_RETURN_TO_SENDER_ADVANCEMENT";
+    public static final String DIE_BY_SUFFOCATION = "DIE_BY_SUFFOCATION";
+    public static final String DIE_BY_STALAGMITE = "DIE_BY_STALAGMITE";
+    public static final String DIE_BY_MAGMA_BLOCK = "DIE_BY_MAGMA_BLOCK";
+    public static final String PICK_UP_OPPONENT_ITEM = "PICK_UP_OPPONENT_ITEM";
+
 }

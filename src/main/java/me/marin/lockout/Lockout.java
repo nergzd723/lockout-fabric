@@ -43,6 +43,7 @@ public class Lockout {
     public final Map<LockoutTeam, LinkedHashSet<EntityType<?>>> spiedMobs = new HashMap<>();
     public final Map<LockoutTeam, LinkedHashSet<Block>> iceTypesMined = new HashMap<>();
     public final Map<LockoutTeam, LinkedHashSet<Identifier>> biomesVisited = new HashMap<>();
+    public final Map<LockoutTeam, LinkedHashSet<Identifier>> deathTypes = new HashMap<>();
     public final Map<LockoutTeam, LinkedHashSet<Identifier>> uniqueAdvancements = new HashMap<>();
     public final Map<LockoutTeam, Double> damageTaken = new HashMap<>();
     public final Map<LockoutTeam, Double> damageDealt = new HashMap<>();

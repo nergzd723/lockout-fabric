@@ -1,3 +1,16 @@
+## Lockout v0.10.4
+- Added 18 goals:
+    - Visit 10 Unique Biomes, Visit 15 Unique Biomes (Overworld biomes, counted per team)
+    - Kill a Creaking (break its Creaking Heart while it's protecting it), Kill a Zombie Nautilus
+    - Loot an Abandoned Camp, Obtain a Sulfur Cube Bucket, Obtain all Eggs (white, blue, brown), Sleep in a Straw Bed
+    - Shoot an Opponent with an Arrow, Pick Up an Item an Opponent Dropped (thrown or from their death) - teams only
+    - Die by Suffocation, Die by Stalagmite, Die by Magma Block, Die 5 Unique Ways
+    - Deflect a Projectile with a Shield, Cure a Zombie Villager, Return to Sender (kill a Ghast with its own
+      fireball), Subspace Bubble
+- New goals only appear when the biomes/structures they need are near spawn (e.g. Pale Garden for the Creaking,
+  a warm and a cold biome for all eggs).
+- Kill Breeze using Wind Charge now requires Trial Chambers near spawn.
+
 ## Lockout v0.10.3
 - Drafts now start with scouting: drafting players are frozen for 15 seconds before the first pick, can jump to toggle
   a bird's-eye view 30 blocks up, and get a Spyglass to zoom with (taken back afterwards).

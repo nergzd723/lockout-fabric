@@ -1,5 +1,7 @@
 package me.marin.lockout.lockout;
 
+import me.marin.lockout.lockout.goals.biome.Visit10UniqueBiomesGoal;
+import me.marin.lockout.lockout.goals.biome.Visit15UniqueBiomesGoal;
 import me.marin.lockout.Lockout;
 import me.marin.lockout.generator.GoalDataGenerator;
 import me.marin.lockout.generator.GoalRequirements;
@@ -404,7 +406,10 @@ public class DefaultGoalRegister {
         INSTANCE.register(GoalType.LIGHT_CANDLE, LightCandleGoal.class);
         INSTANCE.register(GoalType.WEAR_FULL_ENCHANTED_ARMOR, WearFullEnchantedArmorGoal.class);
         INSTANCE.register(GoalType.PUT_WOLF_ARMOR_ON_WOLF, PutWolfArmorOnWolfGoal.class, GoalRequirements.ARMADILLO_BIOMES);
-        INSTANCE.register(GoalType.KILL_BREEZE_USING_WIND_CHARGE, KillBreezeWithWindChargeGoal.class);
+        INSTANCE.register(GoalType.KILL_BREEZE_USING_WIND_CHARGE, KillBreezeWithWindChargeGoal.class, new GoalRequirements.Builder()
+                .structures(List.of(TRIAL_CHAMBERS))
+                .build()
+        );
         INSTANCE.register(GoalType.FILL_BUNDLE_WITH_BUNDLES, FillBundleWithBundlesGoal.class, GoalRequirements.NOT_IN_RANDOM_POOL);
 
         INSTANCE.register(GoalType.OBTAIN_64_ARROWS, Obtain64ArrowsGoal.class);
@@ -535,6 +540,48 @@ public class DefaultGoalRegister {
                 .build()
         );
         INSTANCE.register(GoalType.WEAR_UNIQUE_ARMOR, WearUniqueArmorGoal.class);
+
+        INSTANCE.register(GoalType.VISIT_10_UNIQUE_BIOMES, Visit10UniqueBiomesGoal.class);
+        INSTANCE.register(GoalType.VISIT_15_UNIQUE_BIOMES, Visit15UniqueBiomesGoal.class);
+        INSTANCE.register(GoalType.KILL_CREAKING, KillCreakingGoal.class, GoalRequirements.PALE_GARDEN_BIOME);
+        INSTANCE.register(GoalType.LOOT_ABANDONED_CAMP, LootAbandonedCampGoal.class, new GoalRequirements.Builder()
+                .structures(List.of(ABANDONED_CAMP_BAMBOO_JUNGLE, ABANDONED_CAMP_BIRCH_FOREST, ABANDONED_CAMP_CHERRY_GROVE, ABANDONED_CAMP_DAPPLED_FOREST,
+                        ABANDONED_CAMP_FLOWER_FOREST, ABANDONED_CAMP_FOREST, ABANDONED_CAMP_MEADOW, ABANDONED_CAMP_OLD_GROWTH_BIRCH_FOREST,
+                        ABANDONED_CAMP_OLD_GROWTH_PINE_TAIGA, ABANDONED_CAMP_OLD_GROWTH_SPRUCE_TAIGA, ABANDONED_CAMP_PALE_GARDEN, ABANDONED_CAMP_SAVANNA,
+                        ABANDONED_CAMP_SNOWY_TAIGA, ABANDONED_CAMP_SPARSE_JUNGLE, ABANDONED_CAMP_SWAMP, ABANDONED_CAMP_TAIGA,
+                        ABANDONED_CAMP_WINDSWEPT_FOREST, ABANDONED_CAMP_WOODED_BADLANDS))
+                .build()
+        );
+        INSTANCE.register(GoalType.OBTAIN_SULFUR_CUBE_BUCKET, ObtainSulfurCubeBucketGoal.class, new GoalRequirements.Builder()
+                .biomes(List.of(SULFUR_CAVES))
+                .build()
+        );
+        INSTANCE.register(GoalType.SLEEP_IN_STRAW_BED, SleepInStrawBedGoal.class);
+        INSTANCE.register(GoalType.SHOOT_OPPONENT_WITH_ARROW, ShootOpponentWithArrowGoal.class, GoalRequirements.TEAMS_GOAL);
+        INSTANCE.register(GoalType.DIE_5_UNIQUE_WAYS, Die5UniqueWaysGoal.class);
+        INSTANCE.register(GoalType.KILL_ZOMBIE_NAUTILUS, KillZombieNautilusGoal.class, new GoalRequirements.Builder()
+                .biomes(List.of(OCEAN, DEEP_OCEAN, WARM_OCEAN, LUKEWARM_OCEAN, DEEP_LUKEWARM_OCEAN, COLD_OCEAN, DEEP_COLD_OCEAN, FROZEN_OCEAN, DEEP_FROZEN_OCEAN))
+                .build()
+        );
+        INSTANCE.register(GoalType.GET_SUBSPACE_BUBBLE_ADVANCEMENT, GetSubspaceBubbleAdvancementGoal.class);
+        // Warm and cold chickens lay the blue and brown eggs.
+        INSTANCE.register(GoalType.OBTAIN_ALL_EGGS, ObtainAllEggsGoal.class, new GoalRequirements.Builder()
+                .oneBiomeFromEach(List.of(
+                        List.of(DESERT, JUNGLE, BAMBOO_JUNGLE, SPARSE_JUNGLE, SAVANNA, SAVANNA_PLATEAU, WINDSWEPT_SAVANNA, BADLANDS, ERODED_BADLANDS, WOODED_BADLANDS, MANGROVE_SWAMP),
+                        List.of(SNOWY_PLAINS, ICE_SPIKES, SNOWY_SLOPES, GROVE, FROZEN_RIVER, SNOWY_TAIGA, SNOWY_BEACH, OLD_GROWTH_PINE_TAIGA, OLD_GROWTH_SPRUCE_TAIGA,
+                                TAIGA, WINDSWEPT_FOREST, WINDSWEPT_GRAVELLY_HILLS, WINDSWEPT_HILLS, DAPPLED_FOREST)))
+                .build()
+        );
+        INSTANCE.register(GoalType.DEFLECT_PROJECTILE, DeflectProjectileGoal.class);
+        INSTANCE.register(GoalType.CURE_ZOMBIE_VILLAGER, CureZombieVillagerGoal.class, GoalRequirements.VILLAGE);
+        INSTANCE.register(GoalType.GET_RETURN_TO_SENDER_ADVANCEMENT, GetReturnToSenderAdvancementGoal.class);
+        INSTANCE.register(GoalType.DIE_BY_SUFFOCATION, DieBySuffocationGoal.class);
+        INSTANCE.register(GoalType.DIE_BY_STALAGMITE, DieByStalagmiteGoal.class, new GoalRequirements.Builder()
+                .biomes(List.of(DRIPSTONE_CAVES))
+                .build()
+        );
+        INSTANCE.register(GoalType.DIE_BY_MAGMA_BLOCK, DieByMagmaBlockGoal.class);
+        INSTANCE.register(GoalType.PICK_UP_OPPONENT_ITEM, PickUpOpponentItemGoal.class, GoalRequirements.TEAMS_GOAL);
 
     }
 

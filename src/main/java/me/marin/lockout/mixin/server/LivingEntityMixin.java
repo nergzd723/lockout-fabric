@@ -1,5 +1,12 @@
 package me.marin.lockout.mixin.server;
 
+import me.marin.lockout.lockout.goals.misc.ShootOpponentWithArrowGoal;
+import me.marin.lockout.server.DroppedItemOwners;
+import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.server.level.ServerPlayer;
+import java.util.Objects;
 import me.marin.lockout.Lockout;
 import me.marin.lockout.LockoutTeamServer;
 import me.marin.lockout.lockout.Goal;
@@ -17,6 +24,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(LivingEntity.class)
 public class LivingEntityMixin {
 
+    @Inject(method = "createItemStackToDrop", at = @At("RETURN"))
+    public void onCreateDrop(ItemStack stack, boolean randomly, boolean includeThrower, CallbackInfoReturnable<ItemEntity> cir) {
+        // Remember who dropped it, also for death drops (which vanilla doesn't mark).
+        if ((Object) this instanceof ServerPlayer player && cir.getReturnValue() != null) {
+            DroppedItemOwners.record(cir.getReturnValue(), player.getUUID());
+        }
+    }
+
     @Inject(method = "hurtServer", at = @At("RETURN"))
     public void onDamage(ServerLevel world, DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
         Lockout lockout = LockoutServer.lockout;
@@ -33,6 +48,11 @@ public class LivingEntityMixin {
             if (goal == null) continue;
             if (goal.isCompleted()) continue;
 
+            if (goal instanceof ShootOpponentWithArrowGoal && source.getDirectEntity() instanceof AbstractArrow
+                    && (Object) this instanceof Player target && lockout.isLockoutPlayer(target.getUUID())
+                    && !Objects.equals(lockout.getPlayerTeam(target.getUUID()), team)) {
+                lockout.completeGoal(goal, player);
+            }
             if (goal instanceof Deal400DamageGoal deal400DamageGoal) {
                 team.sendTooltipUpdate(deal400DamageGoal);
                 if (lockout.damageDealt.get(team) >= 400) {

@@ -3,6 +3,8 @@ package me.marin.lockout.mixin.server;
 import me.marin.lockout.Lockout;
 import me.marin.lockout.lockout.Goal;
 import me.marin.lockout.lockout.goals.misc.UseGlowInkGoal;
+import me.marin.lockout.lockout.goals.misc.UseGlowInkNetherGoal;
+import me.marin.lockout.lockout.goals.misc.UseGlowInkWarpedGoal;
 import me.marin.lockout.server.LockoutServer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.GlowInkSacItem;
@@ -28,7 +30,9 @@ public class GlowInkSacItemMixin {
         if (!cir.getReturnValue()) return;
 
         Item signItem = world.getBlockState(signBlockEntity.getBlockPos()).getBlock().asItem();
-        if (signItem != Items.CRIMSON_SIGN && signItem != Items.CRIMSON_HANGING_SIGN) {
+        boolean crimson = signItem == Items.CRIMSON_SIGN || signItem == Items.CRIMSON_HANGING_SIGN;
+        boolean warped = signItem == Items.WARPED_SIGN || signItem == Items.WARPED_HANGING_SIGN;
+        if (!crimson && !warped) {
             return;
         }
 
@@ -36,7 +40,7 @@ public class GlowInkSacItemMixin {
             if (goal == null) continue;
             if (goal.isCompleted()) continue;
 
-            if (goal instanceof UseGlowInkGoal) {
+            if ((goal instanceof UseGlowInkGoal && crimson) || (goal instanceof UseGlowInkWarpedGoal && warped) || goal instanceof UseGlowInkNetherGoal) {
                 lockout.completeGoal(goal, player);
             }
         }

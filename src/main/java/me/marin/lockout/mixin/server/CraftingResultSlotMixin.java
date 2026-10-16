@@ -3,8 +3,10 @@ package me.marin.lockout.mixin.server;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.network.protocol.game.ClientboundSoundPacket;
 import me.marin.lockout.Lockout;
+import me.marin.lockout.LockoutTeamServer;
 import me.marin.lockout.lockout.Goal;
 import me.marin.lockout.lockout.goals.have_more.HaveMostUniqueCraftsGoal;
+import me.marin.lockout.lockout.interfaces.CraftUniqueItemsGoal;
 import me.marin.lockout.server.LockoutServer;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -24,6 +26,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
 
@@ -47,6 +50,24 @@ public class CraftingResultSlotMixin {
         }
 
         if (!(player.containerMenu instanceof CraftingMenu || player.containerMenu instanceof InventoryMenu)) return;
+
+        if (lockout.isLockoutPlayer(player.getUUID())) {
+            LockoutTeamServer team = (LockoutTeamServer) lockout.getPlayerTeam(player.getUUID());
+            LinkedHashSet<Item> teamCrafts = lockout.uniqueItemsCraftedByTeam.computeIfAbsent(team, t -> new LinkedHashSet<>());
+            if (teamCrafts.add(stack.getItem())) {
+                for (Goal goal : lockout.getBoard().getGoals()) {
+                    if (goal == null) continue;
+                    if (goal.isCompleted()) continue;
+
+                    if (goal instanceof CraftUniqueItemsGoal craftUniqueItemsGoal) {
+                        team.sendTooltipUpdate(craftUniqueItemsGoal);
+                        if (teamCrafts.size() >= craftUniqueItemsGoal.getAmount()) {
+                            lockout.completeGoal(goal, team);
+                        }
+                    }
+                }
+            }
+        }
 
         lockout.uniqueCrafts.putIfAbsent(player.getUUID(), new HashSet<>());
         Set<Item> crafts = lockout.uniqueCrafts.get(player.getUUID());

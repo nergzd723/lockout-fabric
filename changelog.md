@@ -1,3 +1,30 @@
+## Unreleased
+- The mod is now on Minecraft 26.3.
+- 'Obtain 4 Unique Saplings' now counts Poplar and Pale Oak Saplings.
+- 'Obtain every type of Horse Armor' now requires Copper Horse Armor.
+- 'Use Glow Ink on Crimson Sign', 'Use Glow Ink on Warped Sign' and 'Use Glow Ink on Crimson or Warped Sign' can't appear on the same board.
+- Only one 'Reach XP level' goal can appear on a board.
+- Added 52 goals:
+    - Breed Armadillos, Breed Camels
+    - Craft 20/50/100 Unique Items (unique crafts are counted per team)
+    - Die by Drowning, Die by falling in Void, Die to Pufferfish, Die to Trident, Die to Warden
+    - Eat Beetroot Soup
+    - Kill Bogged, Kill Husk, Kill Parched, Kill Warden, Kill Pillager using Crossbow
+    - Mine Obsidian
+    - Obtain "Mob Kabob", "Stay Hydrated!" and "The Power of Books" Advancements
+    - Obtain 2 Unique Armor Trims, Obtain 3 types of Horse Armor, Obtain 3 Unique Banner Patterns
+    - Obtain 16 Glow Lichen, Obtain 32 Arrows (or Spectral Arrows), Obtain 64 Coarse Dirt
+    - Obtain all Copper Tools, Obtain every type of Furnace, Obtain every type of Torch
+    - Obtain Amethyst Block, Bone Block, Block of Resin, Copper Chest, Dead Bush, Dried Kelp Block, Emerald Block,
+      Gilded Blackstone, Lodestone, Netherite Scrap, Pottery Sherd, Resin Brick Wall, Smooth Basalt, Smooth Quartz Stairs, Tinted Glass
+    - Obtain Colored Harness
+    - Reach XP level 10, Reach XP level 20
+    - Tame a Nautilus
+    - Tune a Note Block
+    - Use Glow Ink on Warped Sign, Use Glow Ink on Crimson or Warped Sign
+    - Wear Full Copper Armor
+- 'Obtain Gilded Blackstone' is not in the random goal pool, since bastions can't be located before the match.
+
 ## Lockout v0.9.3
 - Fixed spectators getting advancements causing a crash
 

@@ -229,7 +229,7 @@ public class Lockout {
         }
 
         if (!this.isRunning) {
-            var payload = new EndLockoutPayload(winners.stream().mapToInt(winner -> teams.indexOf(winner)).toArray(), System.currentTimeMillis());
+            var payload = new EndLockoutPayload(winners.stream().mapToInt(teams::indexOf).toArray(), System.currentTimeMillis());
             for (ServerPlayer serverPlayer : LockoutServer.server.getPlayerList().getPlayers()) {
                 ServerPlayNetworking.send(serverPlayer, payload);
             }

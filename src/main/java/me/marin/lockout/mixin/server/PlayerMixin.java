@@ -21,12 +21,12 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.throwableitemprojectile.Snowball;
 import net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownEgg;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.util.Objects;
 
 @Mixin(Player.class)
 public abstract class PlayerMixin {
@@ -45,14 +45,14 @@ public abstract class PlayerMixin {
 
             if (goal instanceof OpponentHitBySnowballGoal) {
                 if (entity instanceof Snowball snowballEntity) {
-                    if (snowballEntity.getOwner() instanceof Player shooter && !Objects.equals(player, shooter)) {
+                    if (snowballEntity.getOwner() instanceof Player shooter && isOpponent(lockout, shooter, player)) {
                         lockout.complete1v1Goal(goal, shooter, true, shooter.getName().getString() + " hit " + player.getName().getString() + " with a Snowball.");
                     }
                 }
             }
             if (goal instanceof OpponentHitByEggGoal) {
                 if (entity instanceof ThrownEgg snowballEntity) {
-                    if (snowballEntity.getOwner() instanceof Player shooter && !Objects.equals(player, shooter)) {
+                    if (snowballEntity.getOwner() instanceof Player shooter && isOpponent(lockout, shooter, player)) {
                         lockout.complete1v1Goal(goal, shooter, true, shooter.getName().getString() + " hit " + player.getName().getString() + " with an Egg.");
                     }
                 }
@@ -189,5 +189,11 @@ public abstract class PlayerMixin {
         }
     }
 
-
+    /** Only a hit on someone from another lockout team counts; teammates and spectators don't. */
+    @Unique
+    private static boolean isOpponent(Lockout lockout, Player shooter, Player target) {
+        var shooterTeam = lockout.getPlayerTeam(shooter.getUUID());
+        var targetTeam = lockout.getPlayerTeam(target.getUUID());
+        return shooterTeam != null && targetTeam != null && shooterTeam != targetTeam;
+    }
 }

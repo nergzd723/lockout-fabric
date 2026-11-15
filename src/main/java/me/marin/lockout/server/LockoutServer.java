@@ -6,6 +6,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import me.marin.lockout.*;
 import me.marin.lockout.client.LockoutBoard;
 import me.marin.lockout.generator.BoardGenerator;
+import me.marin.lockout.generator.GoalRequirements;
 import me.marin.lockout.lockout.Goal;
 import me.marin.lockout.lockout.GoalRegistry;
 import me.marin.lockout.lockout.interfaces.HasTooltipInfo;
@@ -276,11 +277,32 @@ public class LockoutServer {
 
         int ret = parseArgumentsIntoTeams(teams, context, false);
         if (ret == 0) return 0;
+        if (!customBoardFitsTeams(context, teams.size())) return 0;
 
         cancelDraft();
         startLockout(teams, null);
 
         return 1;
+    }
+
+    /**
+     * Random and drafted boards skip goals that don't suit the team count, but a custom board is
+     * taken as-is. "Opponent ..." goals need exactly one opponent, so refuse to start with them.
+     */
+    private static boolean customBoardFitsTeams(CommandContext<CommandSourceStack> context, int teamCount) {
+        if (CUSTOM_BOARD == null) return true;
+        List<String> unfit = new ArrayList<>();
+        for (Goal goal : CUSTOM_BOARD.getGoals()) {
+            GoalRequirements requirements = GoalRegistry.INSTANCE.getGoalGenerator(goal.getId());
+            if (requirements != null && !requirements.isTeamsSizeOk(teamCount)) {
+                unfit.add(" - " + goal.getGoalName());
+            }
+        }
+        if (unfit.isEmpty()) return true;
+        context.getSource().sendFailure(Component.literal("The custom board has goals that can't be played with "
+                + teamCount + (teamCount == 1 ? " team" : " teams") + ":\n" + String.join("\n", unfit)
+                + "\nChange the board or remove it with /RemoveCustomBoard."));
+        return false;
     }
 
     public static int draftCommandLogic(CommandContext<CommandSourceStack> context) {
@@ -339,6 +361,7 @@ public class LockoutServer {
 
         int ret = parseArgumentsIntoTeams(teams, context, true);
         if (ret == 0) return 0;
+        if (!customBoardFitsTeams(context, teams.size())) return 0;
 
         cancelDraft();
         startLockout(teams, null);

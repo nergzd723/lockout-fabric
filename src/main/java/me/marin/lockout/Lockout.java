@@ -159,17 +159,21 @@ public class Lockout {
     public void complete1v1Goal(Goal goal, LockoutTeam team, boolean isWinner, String message) {
         if (goal.isCompleted()) return;
         if (!hasStarted()) return;
+        // With more than two teams there's no single opponent to hand the goal to. Boards are
+        // checked for this before starting; this stops older saved matches from picking one at random.
+        if (!isWinner && teams.size() != 2) return;
 
         LockoutTeamServer opponentTeam = (LockoutTeamServer) getOpponentTeam(team);
 
         LockoutTeamServer winnerTeam = isWinner ? (LockoutTeamServer) team : opponentTeam;
-        LockoutTeamServer loserTeam  = isWinner ? opponentTeam : (LockoutTeamServer) team;
 
         goal.setCompleted(true, winnerTeam);
         winnerTeam.addPoint();
 
-        winnerTeam.sendMessage(ChatFormatting.GREEN + message);
-        loserTeam.sendMessage(ChatFormatting.RED + message);
+        for (LockoutTeam lockoutTeam : teams) {
+            if (!(lockoutTeam instanceof LockoutTeamServer lockoutTeamServer)) continue;
+            lockoutTeamServer.sendMessage((lockoutTeamServer == winnerTeam ? ChatFormatting.GREEN : ChatFormatting.RED) + message);
+        }
         for (ServerPlayer spectator : Utility.getSpectators(this, LockoutServer.server)) {
             spectator.sendSystemMessage(Component.literal(message));
         }

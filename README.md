@@ -22,6 +22,10 @@ You can also install Sodium and Lithium listed above.
 
 After world generation, Lockout will search for biomes and structures, and the server (or the singleplayer world) will not be joinable for about 20 seconds.
 
+## Horizon
+A Rust port for [Horizon](https://github.com/horizon-rust/horizon) lives in [`horizon/`](horizon/README.md). It speaks
+this mod's network payloads, so Horizon and Fabric clients and servers can play together.
+
 # Commands
 Create teams using the vanilla `/team` command:
 - `/team add <team name>` - Create a team

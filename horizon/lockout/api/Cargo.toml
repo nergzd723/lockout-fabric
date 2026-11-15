@@ -1,0 +1,10 @@
+[package]
+name = "mod-lockout"
+version = "0.10.4"
+edition = "2024"
+description = "Lockout Bingo for Horizon, wire-compatible with the Fabric mod"
+
+[dependencies]
+# The launcher points this at the Horizon source it builds the game from. Every other
+# dependency must be a crate and version in Horizon's Cargo.lock; this mod needs none.
+horizon-client = { git = "https://github.com/horizon-rust/horizon" }

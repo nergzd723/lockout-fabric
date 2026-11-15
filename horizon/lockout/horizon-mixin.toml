@@ -1,0 +1,13 @@
+# Lockout for Horizon: a native trait mod (docs/native-mods.md, "Trait mods").
+# Build it into an instance with:
+#   horizon-launcher native-build <this folder> --instance <instance> --trust-native-code
+#
+# It uses only catalog hook points and Host helpers, so it is not pinned: it builds on the
+# installed Horizon when that has NATIVE_HOOKS_API 645 or later. It was made and tested on
+# horizon-rust/horizon 4626921895df51521be64d485ee763412de2917c.
+[mod]
+id = "lockout"
+version = "0.10.4"
+
+[api]
+path = "api"

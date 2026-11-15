@@ -209,10 +209,14 @@ public class Lockout {
     private void evaluateWinnerAndEndGame(LockoutTeam team) {
         PlayerList playerManager = LockoutServer.server.getPlayerList();
 
+        // Any team can clinch here, not just the one that scored: a goal taken by a trailing
+        // team still shrinks the pool the others need to catch the leader.
+        LockoutTeam winner = isWinner(team) ? team : teams.stream().filter(this::isWinner).findFirst().orElse(null);
+
         List<LockoutTeam> winners = new ArrayList<>();
-        if (isWinner(team)) {
-            playerManager.broadcastSystemMessage(Component.literal(team.getDisplayName() + " wins."), false);
-            winners.add(team);
+        if (winner != null) {
+            playerManager.broadcastSystemMessage(Component.literal(winner.getDisplayName() + " wins."), false);
+            winners.add(winner);
             setRunning(false);
         } else {
             if (getRemainingGoals() == 0 && teams.size() > 1) {

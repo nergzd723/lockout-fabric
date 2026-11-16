@@ -40,6 +40,7 @@ horizon/
     api/src/screens.rs      the board, draft and Board Builder screens
     api/src/wire.rs         the Fabric payloads
   lockout_tweaks/           injections: raids, zombie villagers, the debug screen
+  dev/lockout-run/          runs the mod on a Horizon checkout you build yourself
   tools/                    regenerate goals.json, names.json and the atlas
 ```
 
@@ -67,57 +68,27 @@ player, LAN hosting and a dedicated server (`--server-output` for a standalone s
 
 The launcher builds mods from GitHub's copy of a Horizon commit, never from a local checkout. To play the mod on a
 checkout you build yourself, do by hand what the launcher's generated game does: one package that links the mod and
-starts the game with its hooks. Check the checkout's hook API first (645 or later):
+starts the game with its hooks (its `main.rs` mirrors the one the launcher generates). Check the checkout's hook API first (645 or later):
 
 ```bash
 grep -n "const NATIVE_HOOKS_API" crates/horizon-client/src/game/native_hooks.rs
 ```
 
-In the checkout, add `lockout-run/Cargo.toml` (with the path to your lockout-fabric clone):
-
-```toml
-[package]
-name = "lockout-run"
-version = "0.10.4"
-edition = "2024"
-publish = false
-
-[lib]
-name = "mod_lockout"
-path = "/path/to/lockout-fabric/horizon/lockout/api/src/lib.rs"
-
-[[bin]]
-name = "lockout-run"
-path = "main.rs"
-
-[dependencies]
-horizon-client = { path = "../crates/horizon-client" }
-horizon-threads = { path = "../crates/horizon-threads" }
-horizon-mods = { path = "../crates/horizon-mods", default-features = false, features = ["index"] }
-png = "0.18"
-```
-
-and `lockout-run/main.rs`:
-
-```rust
-#[global_allocator]
-static ALLOCATOR: horizon_threads::GameAllocator = horizon_threads::GAME_ALLOCATOR;
-
-static MOD_API_LEVEL: [u8; horizon_mods::api_level::MARK.len()] = horizon_mods::api_level::MARK;
-
-fn main() {
-    std::hint::black_box(&MOD_API_LEVEL);
-    let mods: horizon_client::mod_api::Mods = vec![mod_lockout::hooks()].into();
-    horizon_client::mod_api::name_mods(&["lockout"]);
-    horizon_client::entry::main_with(mods);
-}
-```
-
-Add `"lockout-run"` to `members` in the checkout's `Cargo.toml`, then run it from the checkout's root, where
-`cargo run -p horizon-client` finds its prepared resources:
+`horizon/dev/lockout-run/` is that package. With the two clones side by side (`~/horizon` and `~/lockout-fabric`;
+otherwise change `[lib] path` in its `Cargo.toml`), copy it into the checkout and add it to the workspace:
 
 ```bash
-cargo run --profile fast -p lockout-run
+cp -r ~/lockout-fabric/horizon/dev/lockout-run ~/horizon/
+```
+
+```bash
+cd ~/horizon && sed -i 's/^members = \[/members = [\n    "lockout-run",/' Cargo.toml
+```
+
+Then run it as you run `horizon-client`, from the checkout's root, where it finds the prepared resources:
+
+```bash
+cargo run --release -p lockout-run -- --render-distance 12
 ```
 
 This is the client with the mod; its single player and LAN worlds run the match on its integrated server. It

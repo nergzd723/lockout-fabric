@@ -1,0 +1,23 @@
+# Horizon with Lockout, for a Horizon checkout you build yourself (horizon/README.md,
+# "On your own Horizon checkout"). Copy this folder into the checkout's root and add
+# "lockout-run" to its workspace members. The path below assumes the two clones sit side by
+# side (~/horizon and ~/lockout-fabric); change it if yours don't.
+[package]
+name = "lockout-run"
+version = "0.10.4"
+edition = "2024"
+publish = false
+
+[lib]
+name = "mod_lockout"
+path = "../../lockout-fabric/horizon/lockout/api/src/lib.rs"
+
+[[bin]]
+name = "lockout-run"
+path = "main.rs"
+
+[dependencies]
+horizon-client = { path = "../crates/horizon-client" }
+horizon-threads = { path = "../crates/horizon-threads" }
+horizon-mods = { path = "../crates/horizon-mods", default-features = false, features = ["index"] }
+png = "0.18"

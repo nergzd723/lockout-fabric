@@ -41,6 +41,7 @@ horizon/
     api/src/wire.rs         the Fabric payloads
   .lockout_tweaks/          injections: raids, zombie villagers, the debug screen
   dev/lockout-run/          runs the mod on a Horizon checkout you build yourself
+  dev/build-windows.sh      builds it for Windows on Linux, packed with the resources (dev/WINDOWS.md)
   dev/lockout-test/         builds and tests the mod on a Horizon checkout (CI too)
   tools/                    regenerate goals.json, names.json and the atlas; check_sync.py, pack_hnmod.py
 ```
@@ -105,6 +106,9 @@ cargo run --release -p lockout-run -- --render-distance 12
 
 This is the client with the mod; its single player and LAN worlds run the match on its integrated server. It
 doesn't include `lockout_tweaks`, which needs `horizon-mixins apply` over the checkout, as the launcher does.
+
+To build it for Windows PCs from Linux, packed with the prepared resources so they only unpack and play, see
+[dev/WINDOWS.md](dev/WINDOWS.md).
 
 ## Commands
 

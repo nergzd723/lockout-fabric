@@ -161,6 +161,11 @@ The mod has been type-checked and unit-tested against Horizon, not yet played in
   goal kinds need a `Trigger` in `goals.rs` and an arm in `rules.rs`.
 - `names.json` comes from the game's client jar: `python3 -I horizon/tools/extract_names.py <client.jar>`.
 - `wire::LOCKOUT_VERSION` must equal `mod_version` in `gradle.properties`: both sides refuse another version.
+- `mods add-github` on the repository installs its latest GitHub release's `.hnmod`, and a release without one
+  falls back to its tag's source, which must then hold `horizon/lockout`. So attach `lockout-<version>.hnmod` to
+  every release, beside the Fabric jar. The launcher's packing is reproduced by zipping `horizon-native.json`
+  (schema 1, id, version, game `26.3`, the pinned `horizon` and `mixins` commits) with the bundle's files under
+  `mixins/lockout/`; check it with Horizon's `cargo horizon-mod check <file>`.
 
 ## Tests
 

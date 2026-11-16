@@ -63,6 +63,66 @@ horizon-launcher native-build horizon/lockout_tweaks --instance <instance> --tru
 Native mods run unsandboxed with your rights; read the code before you build it. The same build serves single
 player, LAN hosting and a dedicated server (`--server-output` for a standalone server).
 
+### On your own Horizon checkout
+
+The launcher builds mods from GitHub's copy of a Horizon commit, never from a local checkout. To play the mod on a
+checkout you build yourself, do by hand what the launcher's generated game does: one package that links the mod and
+starts the game with its hooks. Check the checkout's hook API first (645 or later):
+
+```bash
+grep -n "const NATIVE_HOOKS_API" crates/horizon-client/src/game/native_hooks.rs
+```
+
+In the checkout, add `lockout-run/Cargo.toml` (with the path to your lockout-fabric clone):
+
+```toml
+[package]
+name = "lockout-run"
+version = "0.10.4"
+edition = "2024"
+publish = false
+
+[lib]
+name = "mod_lockout"
+path = "/path/to/lockout-fabric/horizon/lockout/api/src/lib.rs"
+
+[[bin]]
+name = "lockout-run"
+path = "main.rs"
+
+[dependencies]
+horizon-client = { path = "../crates/horizon-client" }
+horizon-threads = { path = "../crates/horizon-threads" }
+horizon-mods = { path = "../crates/horizon-mods", default-features = false, features = ["index"] }
+png = "0.18"
+```
+
+and `lockout-run/main.rs`:
+
+```rust
+#[global_allocator]
+static ALLOCATOR: horizon_threads::GameAllocator = horizon_threads::GAME_ALLOCATOR;
+
+static MOD_API_LEVEL: [u8; horizon_mods::api_level::MARK.len()] = horizon_mods::api_level::MARK;
+
+fn main() {
+    std::hint::black_box(&MOD_API_LEVEL);
+    let mods: horizon_client::mod_api::Mods = vec![mod_lockout::hooks()].into();
+    horizon_client::mod_api::name_mods(&["lockout"]);
+    horizon_client::entry::main_with(mods);
+}
+```
+
+Add `"lockout-run"` to `members` in the checkout's `Cargo.toml`, then run it from the checkout's root, where
+`cargo run -p horizon-client` finds its prepared resources:
+
+```bash
+cargo run --profile fast -p lockout-run
+```
+
+This is the client with the mod; its single player and LAN worlds run the match on its integrated server. It
+doesn't include `lockout_tweaks`, which needs `horizon-mixins apply` over the checkout, as the launcher does.
+
 ## Commands
 
 The Fabric mod's, with its permission levels and messages: `/lockout teams|players ...`, `/lockout draft ...`,

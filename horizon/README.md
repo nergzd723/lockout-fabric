@@ -109,8 +109,9 @@ doesn't include `lockout_tweaks`, which needs `horizon-mixins apply` over the ch
 
 The Fabric mod's, with its permission levels and messages: `/lockout teams|players ...`, `/lockout draft ...`,
 `/blackout team|players ...`, `/blackout draft ...`, `/chat team|local`, `/GiveGoal`, `/SetStartTime`,
-`/SetBoardSize`, `/SetDraftSettings`, `/SetScoutingTime`, `/RemoveCustomBoard`, and on the client `/BoardPosition`,
-`/BoardBuilder` and `/SetCustomBoard`. Hold **B** for the board (`key.lockout.open_board`).
+`/SetBoardSize`, `/SetDraftSettings`, `/SetScoutingTime`, `/RemoveCustomBoard`, and on the client `/BoardPosition`
+(`left`, `right`, and Horizon's own `hidden`, which keeps the board off the screen), `/BoardBuilder` and
+`/SetCustomBoard`. Hold **B** for the board (`key.lockout.open_board`).
 
 ## What's the same
 
@@ -152,6 +153,10 @@ The goals complete as on Fabric, but the timing or an edge case can differ:
 - A teleport through a portal with an ender pearl needs Horizon to report the pearl's cross-dimension teleport.
 - `/chat team` with no team and no match sends a plain line rather than a normal chat message.
 - The client commands answer in the action bar rather than in chat.
+- The board hides while the debug screen (F3) is open on either side; the Java client hides it on the left only,
+  because its debug screen drops the right column, which Horizon's keeps without `lockout_tweaks`.
+- Toasts already on screen when the board arrives stay (Horizon can refuse a toast, not hide one), so on a
+  Lockout server the tutorial's hints are refused from the start.
 
 The mod has been type-checked and unit-tested against Horizon, not yet played in a running Horizon game.
 

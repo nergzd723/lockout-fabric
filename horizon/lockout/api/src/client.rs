@@ -89,6 +89,8 @@ pub enum BoardPosition {
     Left,
     #[default]
     Right,
+    /// Not drawn (`/BoardPosition hidden`, Horizon only).
+    Hidden,
 }
 
 #[derive(Debug, Default)]
@@ -99,6 +101,8 @@ pub struct Client {
     pub from_local: bool,
     pub tooltips: HashMap<String, String>,
     pub version_mismatch: Option<String>,
+    /// The server runs Lockout: it sent its version.
+    pub lockout_server: bool,
     pub draft: Option<DraftView>,
     /// The pick count when the player closed the draft screen; it opens again on the next pick.
     pub draft_dismissed_at: Option<usize>,
@@ -332,6 +336,7 @@ pub fn packet(c: &mut Client, host: &mut dyn Host, channel: &str, data: &[u8]) {
     }
     match &payload {
         Payload::Version { version } => {
+            c.lockout_server = true;
             let channels: Vec<&str> = wire::SERVERBOUND.iter().chain(wire::CLIENTBOUND).copied().collect();
             if let Some(t) = &c.template {
                 if let Some(p) = reply(t, "minecraft:register", wire::register_body(&channels)) {
@@ -425,6 +430,7 @@ pub fn load_position(c: &mut Client, host: &dyn Host) {
     let config = read_config(host);
     c.position = match config.get("board position").and_then(|v| v.as_str()) {
         Some("left") => BoardPosition::Left,
+        Some("hidden") => BoardPosition::Hidden,
         _ => BoardPosition::Right,
     };
 }
@@ -453,11 +459,17 @@ pub fn tick(c: &mut Client, host: &mut dyn Host) {
             host.mod_image(w, h, &rgba);
         }
     }
+    // The local player's name (`amIPlayingLockout` compares it with the teams'). The client's
+    // entity list holds the others only; `entity_name` reaches this window's own player.
     if c.name.is_none()
         && let Some(id) = c.entity_id
-        && let Some(e) = host.client_entities().into_iter().find(|e| e.id as i32 == id)
     {
-        c.name = e.player_name;
+        c.name = host.entity(id as u32).and_then(|e| host.entity_name(e)).or_else(|| {
+            host.client_entities()
+                .into_iter()
+                .find(|e| e.id as i32 == id)
+                .and_then(|e| e.player_name)
+        });
     }
     if let Some(d) = &mut c.draft {
         d.ticks_left = (d.ticks_left - 1).max(0);
@@ -521,24 +533,38 @@ impl Painter<'_> {
             None => false,
         }
     }
-    /// A nine-slice sprite (`gui.png.mcmeta`'s border) stretched over `rect`.
+    /// A nine-slice GUI sprite with `"stretch_inner": false`, as both Lockout frames' `.mcmeta`
+    /// declare (`GuiGraphics.blitNineSlicedSprite`): the corners as they are, the edges and the
+    /// middle tiled, a last partial tile cut from the tile's top left (`blitTiledSprite`).
     pub fn nine_slice(&mut self, atlas: &Atlas, key: &str, rect: [i32; 4], border: [i32; 4]) {
         let Some(&[sx, sy, sw, sh]) = atlas.sprites.get(key) else {
             return;
         };
         let [x, y, w, h] = rect.map(|v| v as f32);
         let [l, t, r, b] = border.map(|v| v as f32);
+        // (source offset, source size, destination offset, destination size) per column and row.
         let cols = [(0.0, l, 0.0, l), (l, sw - l - r, l, w - l - r), (sw - r, r, w - r, r)];
         let rows = [(0.0, t, 0.0, t), (t, sh - t - b, t, h - t - b), (sh - b, b, h - b, b)];
-        for (su, swid, du, dwid) in cols {
-            for (sv, shei, dv, dhei) in rows {
-                if swid > 0.0 && shei > 0.0 && dwid > 0.0 && dhei > 0.0 {
-                    self.host.sprite(
-                        self.batch,
-                        MOD_IMAGE,
-                        [sx + su, sy + sv, swid, shei],
-                        [x + du, y + dv, dwid, dhei],
-                    );
+        for (su, tile_w, du, dw) in cols {
+            for (sv, tile_h, dv, dh) in rows {
+                if tile_w <= 0.0 || tile_h <= 0.0 || dw <= 0.0 || dh <= 0.0 {
+                    continue;
+                }
+                let mut i = 0.0;
+                while i < dw {
+                    let pw = tile_w.min(dw - i);
+                    let mut j = 0.0;
+                    while j < dh {
+                        let ph = tile_h.min(dh - j);
+                        self.host.sprite(
+                            self.batch,
+                            MOD_IMAGE,
+                            [sx + su, sy + sv, pw, ph],
+                            [x + du + i, y + dv + j, pw, ph],
+                        );
+                        j += tile_h;
+                    }
+                    i += tile_w;
                 }
             }
         }
@@ -640,7 +666,9 @@ pub fn draw_hud(c: &mut Client, host: &dyn Host, batch: &mut HudBatch) {
     let Some(board) = c.board.clone() else { return };
     let state = host.client_state();
     // Left of the screen, the board is hidden while the debug screen is open.
-    if c.position == BoardPosition::Left && state.as_ref().is_some_and(|s| s.debug_screen) {
+    // The Java client hides a left board under the debug screen, whose right column its
+    // `DebugHudMixin` takes away; Horizon's right column stays, so the board hides on either side.
+    if c.position == BoardPosition::Hidden || state.as_ref().is_some_and(|s| s.debug_screen) {
         return;
     }
     let side = board.side();
@@ -719,10 +747,11 @@ pub fn draw_hud(c: &mut Client, host: &dyn Host, batch: &mut HudBatch) {
                 0x8000_0000,
             );
             for n in &names {
-                p.text(n, 2, y, 0xFF00_0000, true);
+                p.text(n, 3, y, 0xFF00_0000, true);
                 y += LINE_HEIGHT;
             }
         }
+        BoardPosition::Hidden => {}
     }
 }
 
@@ -756,6 +785,7 @@ pub fn command(c: &mut Client, host: &mut dyn Host, line: &str) -> bool {
             let position = match arg {
                 "left" => BoardPosition::Left,
                 "right" => BoardPosition::Right,
+                "hidden" => BoardPosition::Hidden,
                 _ => {
                     say(host, "Invalid board position.", 0xFF5555);
                     return true;
@@ -763,12 +793,12 @@ pub fn command(c: &mut Client, host: &mut dyn Host, line: &str) -> bool {
             };
             c.position = position;
             write_config(host, "board position", serde_json::Value::from(arg));
-            let note = if position == BoardPosition::Left {
-                " Note: Opening debug hud (F3) will hide the board."
+            let line = if position == BoardPosition::Hidden {
+                "Board hidden. /BoardPosition left or right shows it again.".to_owned()
             } else {
-                ""
+                "Updated board position. Note: Opening debug hud (F3) will hide the board.".to_owned()
             };
-            say(host, &format!("Updated board position.{note}"), 0xFFFFFF);
+            say(host, &line, 0xFFFFFF);
             true
         }
         "BoardBuilder" => {
@@ -813,6 +843,85 @@ pub fn command(c: &mut Client, host: &mut dyn Host, line: &str) -> bool {
 mod tests {
     use super::*;
     use crate::wire::WireGoal;
+
+    /// Records the sprites drawn.
+    #[derive(Default)]
+    struct Sprites(std::cell::RefCell<Vec<([f32; 4], [f32; 4])>>);
+
+    impl Host for Sprites {
+        fn sprite(&self, _batch: &mut HudBatch, _name: &str, src: [f32; 4], dst: [f32; 4]) -> bool {
+            self.0.borrow_mut().push((src, dst));
+            true
+        }
+        fn client_state(&self) -> Option<NativeClientState> {
+            None
+        }
+    }
+
+    #[test]
+    fn the_hud_frame_tiles_its_slots_as_java_does() {
+        let host = Sprites::default();
+        let mut batch = HudBatch::new([1920, 1080]);
+        let atlas = Atlas {
+            sprites: [("gui/sprites/gui".to_string(), [0.0, 0.0, 58.0, 69.0])].into(),
+        };
+        let mut p = Painter {
+            host: &host,
+            batch: &mut batch,
+        };
+        // A 5x5 board's frame, 94 by 105, from the 58 by 69 sprite with a 3-slot middle.
+        p.nine_slice(&atlas, "gui/sprites/gui", [0, 0, 94, 105], [2, 2, 2, 13]);
+        let drawn = host.0.borrow();
+        // `stretch_inner: false`: the middle is a full 54-pixel tile (three slots) and a cut
+        // 36-pixel one (two), each way, so the slot lines fall every 18 pixels.
+        let middle: Vec<[f32; 4]> = drawn
+            .iter()
+            .filter(|(s, _)| s[0] == 2.0 && s[1] == 2.0)
+            .map(|(s, d)| [s[2], s[3], d[0], d[1]])
+            .collect();
+        assert_eq!(
+            middle,
+            vec![
+                [54.0, 54.0, 2.0, 2.0],
+                [54.0, 36.0, 2.0, 56.0],
+                [36.0, 54.0, 56.0, 2.0],
+                [36.0, 36.0, 56.0, 56.0]
+            ]
+        );
+        // Nothing is stretched.
+        assert!(drawn.iter().all(|(s, d)| s[2] == d[2] && s[3] == d[3]));
+    }
+
+    #[test]
+    fn a_hidden_board_draws_nothing() {
+        let host = Sprites::default();
+        let mut batch = HudBatch::new([1920, 1080]);
+        let mut c = Client {
+            atlas: Some(Atlas {
+                sprites: [("gui/sprites/gui".to_string(), [0.0, 0.0, 58.0, 69.0])].into(),
+            }),
+            ..Client::default()
+        };
+        c.apply(Payload::GoalsTeams {
+            teams: vec![WireTeam {
+                color: "red".into(),
+                players: vec!["Alex".into()],
+            }],
+            goals: (0..9)
+                .map(|_| WireGoal {
+                    id: "ENTER_END".into(),
+                    data: "null".into(),
+                    completed_by: -1,
+                })
+                .collect(),
+            running: true,
+        });
+        assert_eq!(effects_offset(&c), Some(58.0));
+        c.position = BoardPosition::Hidden;
+        draw_hud(&mut c, &host, &mut batch);
+        assert!(host.0.borrow().is_empty());
+        assert_eq!(effects_offset(&c), None);
+    }
 
     #[test]
     fn the_timer_reads_like_the_java_one() {

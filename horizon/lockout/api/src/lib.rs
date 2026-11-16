@@ -88,6 +88,11 @@ struct Lockout {
     death_drops: Mutex<Vec<DeathDrop>>,
     /// Item entities a player dropped as they died, and whose they were.
     dropped: Mutex<HashMap<u32, u128>>,
+    /// The board was drawn this frame.
+    hud_drawn: AtomicBool,
+    /// The local player was held still at the last check (`InputMixin`), for when the client's
+    /// state is busy.
+    hold: AtomicBool,
 }
 
 #[derive(Default, Clone)]
@@ -1520,7 +1525,45 @@ fn leashed_kinds(host: &mut dyn Host, p: &NativeServerPlayer) -> Vec<String> {
     kinds
 }
 
+/// The HUD layers drawn after the sleep overlay, in order.
+const AFTER_SLEEP: [&str; 6] = [
+    "minecraft:overlay_message",
+    "minecraft:title",
+    "minecraft:scoreboard_sidebar",
+    "minecraft:subtitle_overlay",
+    "minecraft:chat",
+    "minecraft:tab_list",
+];
+
 impl Lockout {
+    /// The board in the corner, once a frame, as a HUD layer (`Utility.drawBingoBoard`).
+    fn draw_board_hud(&self, host: &dyn Host, batch: &mut HudBatch) {
+        if self.hud_drawn.swap(true, Ordering::Relaxed) {
+            return;
+        }
+        let Ok(mut c) = self.client.lock() else { return };
+        if c.board.is_some() && !c.from_local {
+            client::draw_hud(&mut c, host, batch);
+            return;
+        }
+        // Single player and a LAN host run the match in this process: draw it from there if no
+        // payload has reached the window.
+        let local = self
+            .server
+            .try_lock()
+            .ok()
+            .and_then(|s| s.game.as_ref().map(|m| (m.goals_teams_payload(), m.ticks, m.started)));
+        if let Some((payload, ticks, started)) = local {
+            c.apply(payload);
+            c.from_local = true;
+            c.apply(Payload::UpdateTimer { ticks });
+            if started {
+                c.apply(Payload::Start);
+            }
+            client::draw_hud(&mut c, host, batch);
+        }
+    }
+
     fn did(&self, host: &mut dyn Host, player: u128, deed: Deed) {
         self.event(host, Event::Did { player, deed });
     }
@@ -2955,23 +2998,41 @@ impl Hooks for Lockout {
 
     fn movement_input(&self, _host: &dyn Host, event: &mut MovementInputEvent) {
         self.local_jump.store(event.jump, Ordering::Relaxed);
-        if self.client.try_lock().is_ok_and(|c| client::hold_still(&c)) {
+        // `InputMixin`: before the start a playing client moves not at all; only sneak is kept.
+        let hold = match self.client.try_lock() {
+            Ok(c) => {
+                let hold = client::hold_still(&c);
+                self.hold.store(hold, Ordering::Relaxed);
+                hold
+            }
+            Err(_) => self.hold.load(Ordering::Relaxed),
+        };
+        if hold {
             event.forward = 0.0;
             event.strafe = 0.0;
             event.jump = false;
         }
     }
 
-    fn toast_add(&self, _host: &mut dyn Host, _event: &mut ToastAddEvent<'_>) -> Flow {
-        // The Java client hides every toast while there is a board.
-        if self.client.try_lock().is_ok_and(|c| c.board.is_some()) {
-            Flow::Cancel
-        } else {
-            Flow::Continue
-        }
+    fn toast_add(&self, _host: &mut dyn Host, event: &mut ToastAddEvent<'_>) -> Flow {
+        // The toast mixins: advancement, recipe, system and tutorial toasts are hidden while
+        // there is a board. Horizon can only refuse a toast as it is queued, not hide one
+        // already shown, so on a Lockout server the tutorial's hints (queued as the world opens,
+        // before the board) are refused from the start.
+        let hidden = ["advancement", "recipe", "system", "tutorial"].contains(&event.kind);
+        let refuse = self
+            .client
+            .try_lock()
+            .is_ok_and(|c| hidden && (c.board.is_some() || (event.kind == "tutorial" && c.lockout_server)));
+        if refuse { Flow::Cancel } else { Flow::Continue }
     }
 
     fn gui_layer_pre(&self, host: &mut dyn Host, event: &mut GuiLayerPreEvent<'_>) -> Flow {
+        // The layers after the sleep overlay: the board goes below the first that is drawn, in
+        // case the sleep overlay's own pass isn't told.
+        if AFTER_SLEEP.contains(&event.layer) {
+            self.draw_board_hud(host, event.batch);
+        }
         if event.layer == "minecraft:effects"
             && let Some(dx) = self.client.try_lock().ok().and_then(|c| client::effects_offset(&c))
         {
@@ -2986,6 +3047,11 @@ impl Hooks for Lockout {
     }
 
     fn gui_layer_post(&self, host: &mut dyn Host, event: &mut GuiLayerPostEvent<'_>) {
+        // `LockoutClient`: the board is a HUD element after the sleep overlay
+        // (`attachElementAfter(VanillaHudElements.SLEEP)`), so screens, chat and titles cover it.
+        if event.layer == "minecraft:sleep_overlay" {
+            self.draw_board_hud(host, event.batch);
+        }
         if event.layer == "minecraft:effects"
             && self
                 .client
@@ -3009,30 +3075,9 @@ impl Hooks for Lockout {
         }
     }
 
-    fn gui_render_post(&self, host: &dyn Host, event: &mut GuiRenderPostEvent<'_>) {
-        let Ok(mut c) = self.client.lock() else { return };
-        if !event.gui_hidden {
-            if c.board.is_some() && !c.from_local {
-                client::draw_hud(&mut c, host, event.batch);
-            } else {
-                // Single player and a LAN host run the match in this process: draw it from
-                // there if no payload has reached the window.
-                let local = self
-                    .server
-                    .try_lock()
-                    .ok()
-                    .and_then(|s| s.game.as_ref().map(|m| (m.goals_teams_payload(), m.ticks, m.started)));
-                if let Some((payload, ticks, started)) = local {
-                    c.apply(payload);
-                    c.from_local = true;
-                    c.apply(Payload::UpdateTimer { ticks });
-                    if started {
-                        c.apply(Payload::Start);
-                    }
-                    client::draw_hud(&mut c, host, event.batch);
-                }
-            }
-        }
+    /// The end of the frame: the board is drawn again next frame.
+    fn gui_render_post(&self, _host: &dyn Host, _event: &mut GuiRenderPostEvent<'_>) {
+        self.hud_drawn.store(false, Ordering::Relaxed);
     }
 
     fn screen_render_post(&self, host: &dyn Host, event: &mut ScreenRenderPostEvent<'_>) {

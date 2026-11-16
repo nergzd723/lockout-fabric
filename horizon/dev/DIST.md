@@ -56,13 +56,21 @@ or for Linux:
 bash ~/lockout-fabric/horizon/dev/build-linux.sh
 ```
 
-(Both are `build-dist.sh --windows` or `--linux`.) Each checks the setup and the resources first (on the pinned
-commit, the runner up to date, `horizon-prepare --check` passes), then builds and writes the archive in `~/horizon`:
+or for Linux on 64-bit ARM (see [Linux on ARM](#linux-on-arm-and-older-distributions) for the setup):
+
+```bash
+bash ~/lockout-fabric/horizon/dev/build-linux-arm64.sh
+```
+
+(They are `build-dist.sh --windows`, `--linux` or `--linux-arm64`.) Each checks the setup and the resources first
+(on the pinned commit, the runner up to date, `horizon-prepare --check` passes), then builds and writes the archive
+in `~/horizon`:
 
 | | Archive | Holds |
 | --- | --- | --- |
 | Windows | `lockout-horizon-windows-x64.tar.gz` | `horizon-client.exe`, `start.bat`, `README.txt`, `resources/` |
 | Linux | `lockout-horizon-linux-x64.tar.gz` | `horizon-client`, `start.sh`, `README.txt`, `resources/` |
+| Linux on ARM | `lockout-horizon-linux-arm64.tar.gz` | the same, for 64-bit ARM |
 
 A resources folder elsewhere goes as an argument: `build-linux.sh ~/elsewhere/resources`.
 
@@ -92,6 +100,61 @@ dist/linux/start.sh
 ```
 
 Get past the title screen: make a world, start a short `/lockout players A B` match.
+
+## Linux on ARM, and older distributions
+
+On a 64-bit ARM Linux machine (a Raspberry Pi 5, an ARM server), do the setup there and run
+`build-linux-arm64.sh` (or `build-linux.sh`, the same there): it builds natively.
+
+From an x86-64 machine, the ARM build is cross-compiled, and needs ARM copies of ALSA and udev to link with. Debian
+and Ubuntu install those beside their own (multiarch); Arch can't. So on Arch, build inside an Ubuntu 22.04
+[distrobox](https://distrobox.it/): it shares your home folder, so `~/horizon`, `~/lockout-fabric` and your Rust
+toolchains are all there. Built in it, the x64 Linux archive needs only glibc 2.35, so it also runs on Ubuntu
+22.04 and later, Debian 12 and the like, which a build from Arch doesn't.
+
+```bash
+distrobox create --name lockout-build --image ubuntu:22.04
+```
+
+```bash
+distrobox enter lockout-build
+```
+
+Once, inside it: arm64 packages come from Ubuntu's ports mirror, so the usual mirror is kept to amd64.
+
+```bash
+sudo dpkg --add-architecture arm64 && sudo sed -i 's/^deb http/deb [arch=amd64] http/' /etc/apt/sources.list
+```
+
+```bash
+printf '%s\n' 'deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy main universe' 'deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-updates main universe' | sudo tee /etc/apt/sources.list.d/arm64.list
+```
+
+```bash
+sudo apt update && sudo apt install -y build-essential pkg-config python3 libasound2-dev libudev-dev gcc-aarch64-linux-gnu libasound2-dev:arm64 libudev-dev:arm64
+```
+
+```bash
+rustup target add aarch64-unknown-linux-gnu
+```
+
+(If `rustup` or `cargo` isn't found in the box, `source ~/.cargo/env` first.) Then build there with a target
+folder of its own, so its builds don't mix with the ones made on Arch:
+
+```bash
+cd ~/horizon && CARGO_TARGET_DIR=target/ubuntu-22.04 bash ~/lockout-fabric/horizon/dev/build-linux-arm64.sh
+```
+
+```bash
+cd ~/horizon && CARGO_TARGET_DIR=target/ubuntu-22.04 bash ~/lockout-fabric/horizon/dev/build-linux.sh
+```
+
+On Debian or Ubuntu itself, the same steps work without the box (on Ubuntu 24.04 the mirror list is
+`/etc/apt/sources.list.d/ubuntu.sources`: add `Architectures: amd64` to each entry instead of the `sed`).
+
+Horizon makes no Linux ARM release of its own, so it isn't a platform Horizon tests: the build is checked to link
+and to need only standard libraries, but whether a given ARM board's GPU driver runs the game is for that board to
+show.
 
 ## Minecraft's files
 
@@ -123,7 +186,7 @@ or open it in Windows 11's Explorer. Then start the game with `start.bat` (it ru
 `horizon-client.exe --resources .\resources`). `dxcompiler.dll`, which Horizon's own Windows release carries,
 isn't needed: without it Horizon compiles its shaders with Windows' own FXC.
 
-Linux: unpack it anywhere and start the game with `./start.sh` (it runs `./horizon-client --resources ./resources`).
+Linux (x64 or ARM): unpack it anywhere and start the game with `./start.sh` (it runs `./horizon-client --resources ./resources`).
 It needs a Vulkan driver, ALSA and udev, which desktop distributions have.
 
 ```bash

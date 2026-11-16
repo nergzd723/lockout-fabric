@@ -41,7 +41,7 @@ horizon/
     api/src/wire.rs         the Fabric payloads
   .lockout_tweaks/          injections: raids, zombie villagers, the debug screen
   dev/lockout-run/          runs the mod on a Horizon checkout you build yourself
-  dev/build-dist.sh         builds it for Windows or Linux PCs, packed with the resources (dev/DIST.md)
+  dev/build-dist.sh         builds it for Windows, Linux or Linux ARM PCs, with the resources (dev/DIST.md)
   dev/lockout-test/         builds and tests the mod on a Horizon checkout (CI too)
   tools/                    regenerate goals.json, names.json and the atlas; check_sync.py, pack_hnmod.py
 ```

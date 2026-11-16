@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Builds Horizon with Lockout for other PCs, Windows (cross-built with MinGW) or Linux, and packs it
-# with the prepared resources (horizon/dev/DIST.md). Run it from the Horizon checkout's root:
+# Builds Horizon with Lockout for other PCs, Windows (cross-built with MinGW), Linux (this machine's
+# own kind) or Linux on 64-bit ARM (cross-built, or native on an ARM machine), and packs it with the
+# prepared resources (horizon/dev/DIST.md). Run it from the Horizon checkout's root:
 #
-#   cd ~/horizon && bash ~/lockout-fabric/horizon/dev/build-dist.sh --windows|--linux [RESOURCES] [--no-resources]
+#   cd ~/horizon && bash ~/lockout-fabric/horizon/dev/build-dist.sh --windows|--linux|--linux-arm64 [RESOURCES] [--no-resources]
 #
-# (build-windows.sh and build-linux.sh are this with the platform filled in.)
+# (build-windows.sh, build-linux.sh and build-linux-arm64.sh are this with the platform filled in.)
 #
 # RESOURCES is the prepared resources folder, by default resources/ in the checkout's root. Writes
 # dist/<platform>/ (the game, a start script, README.txt, and the resources linked in) and
@@ -22,7 +23,7 @@ DOC=horizon/dev/DIST.md
 STACK=$((64 * 1024 * 1024))
 
 fail() { echo "error: $*" >&2; exit 1; }
-usage="usage: build-dist.sh --windows|--linux [RESOURCES] [--no-resources]"
+usage="usage: build-dist.sh --windows|--linux|--linux-arm64 [RESOURCES] [--no-resources]"
 
 platform=
 resources=resources
@@ -31,6 +32,7 @@ for arg in "$@"; do
     case "$arg" in
         --windows) platform=windows ;;
         --linux) platform=linux ;;
+        --linux-arm64) platform=linux-arm64 ;;
         --no-resources) with_resources=0 ;;
         -*) fail "unknown option $arg ($usage)" ;;
         *) resources=$arg ;;
@@ -58,18 +60,35 @@ else
         aarch64) arch=arm64 ;;
         *) arch=$(uname -m) ;;
     esac
-    ARCHIVE=lockout-horizon-linux-$arch.tar.gz
     GAME=horizon-client
     START=start.sh
+    OBJDUMP=objdump
+    if [ "$platform" = linux-arm64 ] && [ "$arch" != arm64 ]; then
+        # Cross-built: Debian or Ubuntu's arm64 compiler, and their arm64 ALSA and udev to link with.
+        TARGET=aarch64-unknown-linux-gnu
+        OBJDUMP=aarch64-linux-gnu-objdump
+        rustup target list --installed | grep -qx "$TARGET" || fail "no ARM target: rustup target add $TARGET"
+        command -v aarch64-linux-gnu-gcc > /dev/null || fail "no ARM compiler: sudo apt install gcc-aarch64-linux-gnu (see \"Linux on ARM\" in $DOC)"
+        for pc in alsa libudev; do
+            [ -f "/usr/lib/aarch64-linux-gnu/pkgconfig/$pc.pc" ] \
+                || fail "no arm64 $pc to link with: sudo apt install libasound2-dev:arm64 libudev-dev:arm64 (see \"Linux on ARM\" in $DOC)"
+        done
+        arch=arm64
+    fi
+    ARCHIVE=lockout-horizon-linux-$arch.tar.gz
 fi
 DIST=dist/$platform
 
 # The runner (horizon/dev/lockout-run): wherever the workspace has it, else added as lockout-run/,
 # and written fresh from the mod each time, its paths pointing at this checkout and this clone.
-member=$(python3 -c '
-import sys, tomllib
-members = tomllib.load(open("Cargo.toml", "rb")).get("workspace", {}).get("members", [])
-print(next((m for m in members if m.rstrip("/").split("/")[-1] == "lockout-run"), ""))')
+# (Read without tomllib, which Ubuntu 22.04's Python 3.10 lacks.)
+member=$(python3 - <<'EOF'
+import re
+block = re.search(r"^members\s*=\s*\[(.*?)\]", open("Cargo.toml").read(), re.M | re.S)
+members = re.findall(r'"([^"]+)"', block.group(1)) if block else []
+print(next((m for m in members if m.rstrip("/").split("/")[-1] == "lockout-run"), ""))
+EOF
+)
 if [ -z "$member" ]; then
     member=lockout-run
     sed -i 's/^members = \[/members = [\n    "lockout-run",/' Cargo.toml
@@ -106,6 +125,13 @@ if [ "$platform" = windows ]; then
     CARGO_TARGET_X86_64_PC_WINDOWS_GNU_RUSTFLAGS="-C target-feature=+crt-static" \
         cargo build --release --target "$TARGET" -p lockout-run
     built=$target/$TARGET/release/lockout-run.exe
+elif [ -n "${TARGET:-}" ]; then
+    # pkg-config reads the arm64 .pc files, which point the linker at the arm64 libraries.
+    CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
+    PKG_CONFIG_ALLOW_CROSS=1 \
+    PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig \
+        cargo build --release --target "$TARGET" -p lockout-run
+    built=$target/$TARGET/release/lockout-run
 else
     # The host's own build, so it shares the cache of `cargo run --release -p lockout-run`.
     cargo build --release -p lockout-run
@@ -115,8 +141,20 @@ fi
 rm -rf "$DIST" && mkdir -p "$DIST"
 cp "$built" "$DIST/$GAME"
 
-# Only libraries every player has (Horizon's own release check).
-python3 tools/check_imports.py "$DIST/$GAME"
+# Only libraries every player has: Horizon's own release check, which knows x86-64's loader, so an
+# arm64 game is checked against arm64's.
+if [ "$platform" = linux-arm64 ]; then
+    python3 - "$DIST/$GAME" <<'EOF'
+import sys
+sys.path.insert(0, "tools")
+import check_imports
+check_imports.LINUX_LOADER = "/lib/ld-linux-aarch64.so.1"
+check_imports.LINUX_SYSTEM = (check_imports.LINUX_SYSTEM - {"ld-linux-x86-64.so.2"}) | {"ld-linux-aarch64.so.1"}
+sys.exit(0 if check_imports.check(sys.argv[1]) else 1)
+EOF
+else
+    python3 tools/check_imports.py "$DIST/$GAME"
+fi
 if [ "$platform" = windows ]; then
     # And the stack lockout-run/build.rs asks for.
     python3 - "$DIST/$GAME" "$STACK" <<'EOF'
@@ -139,11 +177,12 @@ Explorer opens it too) and start the game with start.bat."
   horizon-prepare.exe sounds --output .\\resources"
 else
     # The newest glibc it needs: the distributions it runs on are those with that one or newer.
-    glibc=$(objdump -T "$DIST/$GAME" 2>/dev/null | grep -o 'GLIBC_[0-9][0-9.]*' | sort -uV | tail -1 | cut -d_ -f2 || true)
+    glibc=$($OBJDUMP -T "$DIST/$GAME" 2>/dev/null | grep -o 'GLIBC_[0-9][0-9.]*' | sort -uV | tail -1 | cut -d_ -f2 || true)
     [ -n "$glibc" ] && echo "$DIST/$GAME: needs glibc $glibc or newer"
     printf '%s\n' '#!/bin/sh' 'cd "$(dirname "$0")" && exec ./horizon-client --resources ./resources "$@"' > "$DIST/$START"
     chmod 755 "$DIST/$START" "$DIST/$GAME"
-    system="Linux ($(uname -m)${glibc:+, glibc $glibc or newer: check with ldd --version})"
+    cpu=$([ "$arch" = arm64 ] && echo "64-bit ARM" || echo "$(uname -m)")
+    system="Linux ($cpu${glibc:+, glibc $glibc or newer: check with ldd --version})"
     unpack="Unpack it anywhere (tar -xf $ARCHIVE) and start the game with ./start.sh. It needs a
 Vulkan driver, ALSA (libasound2) and udev, which desktop distributions have."
     prepare="./horizon-prepare --prepare --output ./resources --server-jar <server.jar>

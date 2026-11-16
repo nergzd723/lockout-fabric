@@ -5,10 +5,12 @@
 use crate::board::World;
 use crate::compass::Compass;
 use crate::draft::{Draft, DraftSettings};
-use crate::goals::{self, DATA_NONE, HOSTILE, LEATHER_RGB, OpponentEvent, Trigger};
+use crate::goals::{self, DATA_NONE, Trigger};
 use crate::pause::{self, Pause, Present};
+pub use crate::rules::Event;
+use crate::rules::{Trackers, Viewer};
 use crate::wire::{self, COLOR_ORDER, Payload, TEAM_COLORS, WireGoal, WireTeam};
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 
 pub const MIN_BOARD_SIZE: usize = 3;
 pub const MAX_BOARD_SIZE: usize = 7;
@@ -85,9 +87,11 @@ pub enum Action {
         player: u128,
         mode: i32,
     },
+    /// A sound at the player, in `category` (`master`, `blocks`).
     Sound {
         player: u128,
         sound: &'static str,
+        category: &'static str,
         volume: f32,
         pitch: f32,
     },
@@ -139,8 +143,6 @@ pub enum Action {
     },
     /// Writes the running match to the world's `lockout-match.json`.
     Save,
-    /// Reads every lockout player's sprint statistic now, so only this match's sprint counts.
-    SnapshotSprint,
     /// Clears the player for a new match: inventory, effects, health, food, experience,
     /// fire, statistics and advancements.
     Reset {
@@ -194,13 +196,6 @@ pub struct Square {
     pub completed_by: Option<usize>,
 }
 
-/// A goal's progress for one team: what it has seen, and how much.
-#[derive(Debug, Clone, Default)]
-pub(crate) struct Progress {
-    pub(crate) seen: BTreeSet<String>,
-    pub(crate) count: f64,
-}
-
 #[derive(Debug)]
 pub struct Match {
     pub teams: Vec<Team>,
@@ -209,7 +204,10 @@ pub struct Match {
     pub ticks: i64,
     pub started: bool,
     pub running: bool,
-    pub(crate) progress: HashMap<(usize, usize), Progress>,
+    /// The Java mod's progress fields (`Lockout.foodTypesEaten`, ...).
+    pub trackers: Trackers,
+    /// Advancement titles heard this session, for the tooltips.
+    pub titles: HashMap<String, String>,
 }
 
 /// An inventory slot's stack, as far as goals look at it.
@@ -219,6 +217,12 @@ pub struct Held {
     pub count: u32,
     pub potion: Option<String>,
     pub dyed: Option<i32>,
+    /// `ItemStack.isEnchanted`.
+    pub enchanted: bool,
+    /// A `minecraft:base_color` (a shield with a banner).
+    pub base_color: bool,
+    /// A bundle's contents, by item id.
+    pub bundle: Option<Vec<String>>,
 }
 
 impl Held {
@@ -229,209 +233,6 @@ impl Held {
             ..Self::default()
         }
     }
-}
-
-/// What a hook heard, in the terms goals care about. Player ids are UUIDs.
-#[derive(Debug, Clone)]
-pub enum Event {
-    /// The 41 inventory slots (`Inventory` numbering: 36..40 the armour, feet first).
-    Inventory {
-        player: u128,
-        stacks: Vec<Option<Held>>,
-    },
-    Advancement {
-        player: u128,
-        id: String,
-    },
-    Kill {
-        player: u128,
-        kind: String,
-        color: Option<String>,
-        dimension: Option<String>,
-    },
-    Death {
-        player: u128,
-        damage_type: String,
-        killer_kind: Option<String>,
-        killer_player: Option<u128>,
-        message_key: Option<String>,
-    },
-    Breed {
-        player: u128,
-        kind: String,
-    },
-    Tame {
-        player: u128,
-        kind: String,
-    },
-    EffectAdded {
-        player: u128,
-        effect: String,
-    },
-    Effects {
-        player: u128,
-        effects: Vec<String>,
-    },
-    Consumed {
-        player: u128,
-        item: String,
-        potion: Option<String>,
-    },
-    Stat {
-        player: u128,
-        stat: String,
-    },
-    Mined {
-        player: u128,
-        block: String,
-    },
-    Dimension {
-        player: u128,
-        dimension: String,
-    },
-    Position {
-        player: u128,
-        dimension: String,
-        y: f64,
-        biome: Option<String>,
-        below: Option<String>,
-        in_water: bool,
-        on_fire: bool,
-    },
-    XpLevel {
-        player: u128,
-        level: i32,
-    },
-    Crafted {
-        player: u128,
-        item: String,
-    },
-    Ride {
-        player: u128,
-        vehicle: String,
-    },
-    Named {
-        player: u128,
-        kind: String,
-        name: String,
-    },
-    ItemBroken {
-        player: u128,
-        item: String,
-    },
-    PlacedBlock {
-        player: u128,
-        item: String,
-    },
-    PlacedHanging {
-        player: u128,
-        kind: String,
-    },
-    UsedItem {
-        player: u128,
-        item: String,
-    },
-    MilkAway {
-        player: u128,
-    },
-    Food {
-        player: u128,
-        from: i32,
-        to: i32,
-    },
-    Enraged {
-        player: u128,
-        kind: String,
-    },
-    ShieldDisabled {
-        player: u128,
-    },
-    ItemFrameInFrame {
-        player: u128,
-    },
-    WolfArmor {
-        player: u128,
-    },
-    Stonecutter {
-        player: u128,
-    },
-    Loom {
-        player: u128,
-    },
-    Anvil {
-        player: u128,
-    },
-    Damage {
-        victim: Option<u128>,
-        attacker: Option<u128>,
-        damage_type: String,
-        amount: f32,
-    },
-    HitBy {
-        victim: u128,
-        projectile: String,
-    },
-    PickedUp {
-        player: u128,
-        thrower: Option<u128>,
-    },
-    SprintCm {
-        player: u128,
-        cm: i32,
-    },
-}
-
-impl Event {
-    fn player(&self) -> Option<u128> {
-        use Event::*;
-        match self {
-            Inventory { player, .. }
-            | Advancement { player, .. }
-            | Kill { player, .. }
-            | Death { player, .. }
-            | Breed { player, .. }
-            | Tame { player, .. }
-            | EffectAdded { player, .. }
-            | Effects { player, .. }
-            | Consumed { player, .. }
-            | Stat { player, .. }
-            | Mined { player, .. }
-            | Dimension { player, .. }
-            | Position { player, .. }
-            | XpLevel { player, .. }
-            | Crafted { player, .. }
-            | Ride { player, .. }
-            | Named { player, .. }
-            | ItemBroken { player, .. }
-            | PlacedBlock { player, .. }
-            | PlacedHanging { player, .. }
-            | UsedItem { player, .. }
-            | MilkAway { player }
-            | Food { player, .. }
-            | Enraged { player, .. }
-            | ShieldDisabled { player }
-            | ItemFrameInFrame { player }
-            | WolfArmor { player }
-            | Stonecutter { player }
-            | Loom { player }
-            | Anvil { player }
-            | PickedUp { player, .. }
-            | SprintCm { player, .. } => Some(*player),
-            HitBy { victim, .. } => Some(*victim),
-            Damage { victim, attacker, .. } => victim.or(*attacker),
-        }
-    }
-}
-
-/// What a team does to a goal.
-enum Outcome {
-    None,
-    /// The player's team completes it.
-    Complete,
-    /// The other team does (1v1 goals about what happens to an opponent).
-    CompleteForOpponent,
-    /// The progress changed: the tooltip is sent again.
-    Progressed,
 }
 
 /// A start someone asked for. Vanilla teams are read with `/team list`, which only runs
@@ -478,8 +279,6 @@ pub struct State {
     pub deferred: Vec<Action>,
     /// Who has hurt each entity last: entity id -> (player, tick), so a kill by a bow counts.
     pub last_hurt_by: HashMap<u32, (u128, i64)>,
-    /// The sprint statistic each player had at the start, so only this match's sprint counts.
-    pub sprint_base: HashMap<u128, i32>,
     pub server_ticks: i64,
     pub draft: Option<Draft>,
     /// What was located near spawn; None until the server has looked.
@@ -501,6 +300,7 @@ pub struct Online {
     pub dimension: String,
     pub position: [f64; 3],
     pub xp_level: i32,
+    pub dead: bool,
 }
 
 impl Online {
@@ -546,7 +346,8 @@ impl Match {
             ticks: -start_ticks,
             started: false,
             running: true,
-            progress: HashMap::new(),
+            trackers: Trackers::default(),
+            titles: HashMap::new(),
         }
     }
 
@@ -563,19 +364,6 @@ impl Match {
         self.teams
             .iter()
             .position(|t| t.players.iter().any(|(u, _)| *u == player))
-    }
-
-    fn player_name(&self, player: u128) -> String {
-        self.teams
-            .iter()
-            .flat_map(|t| &t.players)
-            .find(|(u, _)| *u == player)
-            .map_or_else(String::new, |(_, n)| n.clone())
-    }
-
-    /// The other team, in a match of two.
-    fn opponent(&self, team: usize) -> Option<usize> {
-        (self.teams.len() == 2).then_some(1 - team)
     }
 
     pub fn remaining(&self) -> usize {
@@ -615,8 +403,11 @@ impl Match {
         if self.started {
             out.push(Payload::Start);
         }
+        let viewer = self
+            .team_of(player)
+            .map_or(Viewer::Spectator, |t| Viewer::Player(t, player));
         for i in 0..self.board.len() {
-            if let Some(tooltip) = self.tooltip(i, self.team_of(player)) {
+            if let Some(tooltip) = self.tooltip(i, viewer) {
                 out.push(Payload::UpdateTooltip {
                     goal: self.board[i].id.clone(),
                     tooltip,
@@ -625,107 +416,6 @@ impl Match {
         }
         out
     }
-
-    fn amount_of(trigger: &Trigger) -> Option<(f64, &'static str)> {
-        Some(match trigger {
-            Trigger::UniqueAdvancements { amount } => (*amount as f64, "Advancements"),
-            Trigger::KillUniqueHostile { amount } => (*amount as f64, "Unique Hostile Mobs Killed"),
-            Trigger::BreedUnique { amount } => (*amount as f64, "Unique Animals Bred"),
-            Trigger::EatUnique { amount } => (*amount as f64, "Unique Food types"),
-            Trigger::UniqueBiomes { amount } => (*amount as f64, "Biomes visited"),
-            Trigger::CraftUnique { amount } => (*amount as f64, "Unique items crafted"),
-            Trigger::DieUniqueWays { amount } => (*amount as f64, "Unique deaths"),
-            Trigger::MineUnique { amount, .. } => (*amount as f64, "Types mined"),
-            Trigger::KillAll { entities } => (entities.len() as f64, "Mobs killed"),
-            Trigger::EatAll { items } => (items.len() as f64, "Eaten"),
-            Trigger::BiomesAll { biomes } => (biomes.len() as f64, "Biomes visited"),
-            Trigger::KillCount { amount, .. } => (*amount as f64, "Killed"),
-            Trigger::TakeDamage { amount } => (*amount as f64, "Damage taken"),
-            Trigger::DealDamage { amount } => (*amount as f64, "Damage dealt"),
-            _ => return None,
-        })
-    }
-
-    /// The board tooltip's progress lines (`UpdateTooltipPayload`): a team's own for its
-    /// players, every team's count for spectators (`team` None).
-    pub fn tooltip(&self, square: usize, team: Option<usize>) -> Option<String> {
-        let (amount, label) = Self::amount_of(&self.board[square].trigger)?;
-        let mut lines = vec![" ".to_owned()];
-        let value = |t: usize| {
-            self.progress.get(&(square, t)).map_or(0.0, |p| {
-                if p.seen.is_empty() {
-                    p.count
-                } else {
-                    p.seen.len() as f64
-                }
-            })
-        };
-        match team {
-            Some(t) => {
-                lines.push(format!("{label}: {}/{}", value(t).floor(), amount));
-                if let Some(p) = self.progress.get(&(square, t)) {
-                    let names: Vec<String> = p.seen.iter().map(|s| pretty(s)).collect();
-                    for chunk in names.chunks(4) {
-                        lines.push(chunk.join(", "));
-                    }
-                }
-            }
-            None => {
-                for (i, t) in self.teams.iter().enumerate() {
-                    lines.push(format!(
-                        "{}{}§r: {}/{}",
-                        legacy_color(t.color),
-                        t.display_name(),
-                        value(i).floor(),
-                        amount
-                    ));
-                }
-            }
-        }
-        lines.push(" ".to_owned());
-        Some(lines.join("\n"))
-    }
-}
-
-/// `minecraft:zombie_villager` → `Zombie Villager`.
-fn pretty(id: &str) -> String {
-    let path = id.rsplit(':').next().unwrap_or(id);
-    let path = path.rsplit('/').next().unwrap_or(path);
-    path.split('_')
-        .map(|w| {
-            let mut c = w.chars();
-            c.next()
-                .map(|f| f.to_uppercase().chain(c).collect::<String>())
-                .unwrap_or_default()
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
-fn holds(stacks: &[Option<Held>], item: &str) -> u32 {
-    stacks
-        .iter()
-        .flatten()
-        .filter(|h| h.item == item)
-        .map(|h| h.count)
-        .sum()
-}
-
-fn worn(stacks: &[Option<Held>]) -> impl Iterator<Item = &Held> {
-    stacks.iter().skip(36).take(4).flatten()
-}
-
-fn armor(stacks: &[Option<Held>]) -> Vec<&str> {
-    worn(stacks).map(|h| h.item.as_str()).collect()
-}
-
-/// `minecraft:iron_helmet` → `iron`: the armour's material, for "different materials".
-fn armor_material(item: &str) -> Option<&str> {
-    let path = item.rsplit(':').next()?;
-    let (material, piece) = path.rsplit_once('_')?;
-    ["helmet", "chestplate", "leggings", "boots"]
-        .contains(&piece)
-        .then_some(material)
 }
 
 impl State {
@@ -751,20 +441,31 @@ impl State {
         }
     }
 
-    /// `team` takes square `square`. `online` are the players on the server.
+    /// `Lockout.completeGoal(goal, team, message)`: `team` takes square `square`. `online`
+    /// are the players on the server.
     pub fn complete(&mut self, square: usize, team: usize, message: String, online: &[u128], out: &mut Vec<Action>) {
         let Some(m) = &mut self.game else { return };
         if !m.started || !m.running || m.board[square].completed_by.is_some() {
             return;
         }
-        m.board[square].completed_by = Some(team);
-        m.teams[team].points += 1;
-        let id = m.board[square].id.clone();
+        self.complete_quietly(square, team, out);
         self.announce(team, &message, online, out);
-        // The clients play the completion sounds (`LockoutClient`'s CompleteTaskPayload receiver).
+        self.finish_completion(square, team, out);
+    }
+
+    pub(crate) fn complete_quietly(&mut self, square: usize, team: usize, _out: &mut Vec<Action>) {
+        let Some(m) = &mut self.game else { return };
+        m.teams[team].points += 1;
+        m.board[square].completed_by = Some(team);
+    }
+
+    /// The completion's packet (the clients play the sounds, `LockoutClient`'s
+    /// CompleteTaskPayload receiver), then the winner check.
+    pub(crate) fn finish_completion(&mut self, square: usize, team: usize, out: &mut Vec<Action>) {
+        let Some(m) = &self.game else { return };
         out.push(Action::SendAll {
             payload: Payload::CompleteTask {
-                goal: id,
+                goal: m.board[square].id.clone(),
                 team: team as i32,
             },
         });
@@ -772,7 +473,7 @@ impl State {
     }
 
     /// Takes a "have the most" square from whoever held it.
-    fn clear(&mut self, square: usize, out: &mut Vec<Action>) {
+    pub(crate) fn clear(&mut self, square: usize, out: &mut Vec<Action>) {
         let Some(m) = &mut self.game else { return };
         if let Some(t) = m.board[square].completed_by.take() {
             m.teams[t].points -= 1;
@@ -829,8 +530,7 @@ impl State {
                 crate::draft::DraftOutcome::Cancelled => self.draft = None,
                 crate::draft::DraftOutcome::Finished { teams, board } => {
                     self.draft = None;
-                    out.extend(self.start(teams, board, online, &HashMap::new()));
-                    out.push(Action::SnapshotSprint);
+                    out.extend(self.start(teams, board, online));
                 }
             }
         }
@@ -884,8 +584,12 @@ impl State {
                 .collect();
             out.extend(c.update(&positions));
         }
-        let xp: HashMap<u128, i32> = online.iter().map(|p| (p.uuid, p.xp_level)).collect();
-        self.update_most(&uuids, &xp, &mut out);
+        // `HaveMostXPLevelsGoal`: every online player's level, 0 while dead.
+        let levels: Vec<(u128, i32)> = online
+            .iter()
+            .map(|p| (p.uuid, if p.dead { 0 } else { p.xp_level }))
+            .collect();
+        self.recalculate_xp(&levels, &uuids, &mut out);
         if let Some(m) = &self.game
             && m.ticks % 20 == 0
         {
@@ -896,195 +600,12 @@ impl State {
         out
     }
 
-    fn update_most(&mut self, online: &[u128], xp: &HashMap<u128, i32>, out: &mut Vec<Action>) {
-        let Some(m) = &self.game else { return };
-        let mut changes = Vec::new();
-        for (i, sq) in m.board.iter().enumerate() {
-            let score: Vec<f64> = match sq.trigger {
-                Trigger::MostXpLevels => m
-                    .teams
-                    .iter()
-                    .map(|t| {
-                        t.players
-                            .iter()
-                            .filter_map(|(u, _)| xp.get(u))
-                            .copied()
-                            .max()
-                            .unwrap_or(0) as f64
-                    })
-                    .collect(),
-                Trigger::MostUniqueCrafts => (0..m.teams.len())
-                    .map(|t| m.progress.get(&(i, t)).map_or(0, |p| p.seen.len()) as f64)
-                    .collect(),
-                _ => continue,
-            };
-            let best = score.iter().cloned().fold(0.0, f64::max);
-            let leaders: Vec<usize> = (0..score.len()).filter(|&t| score[t] == best).collect();
-            let leader = (best > 0.0 && leaders.len() == 1).then(|| leaders[0]);
-            if leader != sq.completed_by {
-                changes.push((i, leader));
-            }
-        }
-        for (i, leader) in changes {
-            self.clear(i, out);
-            if let Some(t) = leader {
-                let name = self
-                    .game
-                    .as_ref()
-                    .map(|m| format!("{} completed {}.", m.teams[t].display_name(), m.board[i].name))
-                    .unwrap_or_default();
-                self.complete(i, t, name, online, out);
-            }
-        }
-    }
-
-    /// The goals `event` completes or moves along.
-    pub fn handle(&mut self, event: Event, online: &[u128]) -> Vec<Action> {
-        let mut out = Vec::new();
-        let Some(m) = &mut self.game else { return out };
-        if !m.started || !m.running {
-            return out;
-        }
-        let Some(actor) = event.player() else { return out };
-        let actor_team = m.team_of(actor);
-        let mut done: Vec<(usize, usize, String)> = Vec::new();
-        let mut progressed: Vec<(usize, usize)> = Vec::new();
-        let n = m.board.len();
-        for i in 0..n {
-            if m.board[i].completed_by.is_some() {
-                continue;
-            }
-            let trigger = m.board[i].trigger.clone();
-            // The team this event is about: the actor's, or the victim's for damage.
-            let team = match &event {
-                Event::Damage { victim, attacker, .. } => match trigger {
-                    Trigger::DealDamage { .. } | Trigger::ShootOpponentWithArrow => attacker.and_then(|a| m.team_of(a)),
-                    _ => victim.and_then(|v| m.team_of(v)),
-                },
-                _ => actor_team,
-            };
-            let Some(team) = team else { continue };
-            let progress = m.progress.entry((i, team)).or_default();
-            let outcome = evaluate(&trigger, &event, progress, m.teams.len());
-            let outcome = match (&trigger, &event) {
-                // An arrow from one team into the other.
-                (
-                    Trigger::ShootOpponentWithArrow,
-                    Event::Damage {
-                        victim: Some(v),
-                        damage_type,
-                        ..
-                    },
-                ) => {
-                    if damage_type == "minecraft:arrow" && m.team_of(*v).is_some_and(|vt| vt != team) {
-                        Outcome::Complete
-                    } else {
-                        Outcome::None
-                    }
-                }
-                (
-                    Trigger::KillOtherPlayer,
-                    Event::Death {
-                        killer_player: Some(k),
-                        player,
-                        ..
-                    },
-                ) => match (m.team_of(*k), m.team_of(*player)) {
-                    (Some(kt), Some(pt)) if kt != pt => {
-                        done.push((i, kt, format!("{} completed {}.", m.player_name(*k), m.board[i].name)));
-                        Outcome::None
-                    }
-                    _ => Outcome::None,
-                },
-                (Trigger::PickUpOpponentItem, Event::PickedUp { thrower: Some(t), .. }) => {
-                    if m.team_of(*t).is_some_and(|tt| tt != team) {
-                        Outcome::Complete
-                    } else {
-                        Outcome::None
-                    }
-                }
-                _ => outcome,
-            };
-            match outcome {
-                Outcome::Complete => {
-                    let who = match &event {
-                        Event::Damage { attacker: Some(a), .. }
-                            if matches!(trigger, Trigger::DealDamage { .. } | Trigger::ShootOpponentWithArrow) =>
-                        {
-                            *a
-                        }
-                        _ => actor,
-                    };
-                    let name = if matches!(event, Event::Damage { .. })
-                        && !matches!(trigger, Trigger::DealDamage { .. } | Trigger::ShootOpponentWithArrow)
-                    {
-                        m.teams[team].display_name()
-                    } else {
-                        m.player_name(who)
-                    };
-                    done.push((i, team, format!("{name} completed {}.", m.board[i].name)));
-                }
-                Outcome::CompleteForOpponent => {
-                    if let Some(o) = m.opponent(team) {
-                        done.push((
-                            i,
-                            o,
-                            format!("{} {}.", m.player_name(actor), opponent_message(&trigger)),
-                        ));
-                    }
-                }
-                Outcome::Progressed => progressed.push((i, team)),
-                Outcome::None => {}
-            }
-        }
-        for (i, team) in progressed {
-            self.send_tooltips(i, team, online, &mut out);
-        }
-        for (i, team, message) in done {
-            self.complete(i, team, message, online, &mut out);
-        }
-        out
-    }
-
-    fn send_tooltips(&self, square: usize, team: usize, online: &[u128], out: &mut Vec<Action>) {
-        let Some(m) = &self.game else { return };
-        let id = m.board[square].id.clone();
-        if let Some(tooltip) = m.tooltip(square, Some(team)) {
-            for (p, _) in &m.teams[team].players {
-                out.push(Action::Send {
-                    player: *p,
-                    payload: Payload::UpdateTooltip {
-                        goal: id.clone(),
-                        tooltip: tooltip.clone(),
-                    },
-                });
-            }
-        }
-        if let Some(tooltip) = m.tooltip(square, None) {
-            for s in self.spectators(online) {
-                out.push(Action::Send {
-                    player: s,
-                    payload: Payload::UpdateTooltip {
-                        goal: id.clone(),
-                        tooltip: tooltip.clone(),
-                    },
-                });
-            }
-        }
-    }
-
     /// Starts a match: resets the players (by console commands, run on the next tick),
     /// sends the board and starts the countdown.
     /// Starts a match (`LockoutServer.startLockout`): resets every player (by console
     /// commands, run on the next tick), hands out the tracking compasses, sends the board
     /// and starts the countdown.
-    pub fn start(
-        &mut self,
-        teams: Vec<Team>,
-        goals: Vec<(String, String)>,
-        online: &[Online],
-        sprint: &HashMap<u128, i32>,
-    ) -> Vec<Action> {
+    pub fn start(&mut self, teams: Vec<Team>, goals: Vec<(String, String)>, online: &[Online]) -> Vec<Action> {
         let mut out = Vec::new();
         if let Some(mut p) = self.pause.take() {
             p.cancel(&mut out);
@@ -1092,7 +613,6 @@ impl State {
         let start = self.settings.start_seconds * 20;
         let game = Match::new(teams, goals, start);
         self.last_hurt_by.clear();
-        self.sprint_base = sprint.clone();
         for p in online {
             out.push(Action::Reset { player: p.uuid });
             if game.team_of(p.uuid).is_some() {
@@ -1187,8 +707,7 @@ impl State {
         let (mut out, outcome) = d.action(player, action, scouts);
         if let crate::draft::DraftOutcome::Finished { teams, board } = outcome {
             self.draft = None;
-            out.extend(self.start(teams, board, online, &HashMap::new()));
-            out.push(Action::SnapshotSprint);
+            out.extend(self.start(teams, board, online));
         }
         out
     }
@@ -1259,297 +778,17 @@ impl State {
         let Some((uuid, name)) = player else {
             return Err("Invalid target.".into());
         };
-        let Some(team) = m.team_of(uuid) else {
+        if m.team_of(uuid).is_none() {
             return Err(format!("Player {name} is not playing Lockout."));
-        };
+        }
         if number == 0 || number > m.board.len() {
             return Err("Goal number does not exist on the board.".into());
         }
         let square = number - 1;
         let reply = format!("Gave {name} goal \"{}\".", m.board[square].name);
-        let message = format!("{} completed {}.", m.player_name(uuid), m.board[square].name);
         let mut out = Vec::new();
-        self.clear(square, &mut out);
-        self.complete(square, team, message, online, &mut out);
+        self.update_goal_completion(square, uuid, online, &mut out);
         Ok((reply, out))
-    }
-}
-
-/// The line an opponent's slip is announced with.
-fn opponent_message(trigger: &Trigger) -> String {
-    match trigger {
-        Trigger::Opponent(OpponentEvent::Obtains(item)) => format!("obtained {}", pretty(item)),
-        Trigger::Opponent(OpponentEvent::Dies { .. }) => "died".into(),
-        Trigger::Opponent(OpponentEvent::CatchesFire) => "caught on fire".into(),
-        Trigger::Opponent(OpponentEvent::HitBy(p)) => format!("was hit by {}", pretty(p)),
-        Trigger::Opponent(OpponentEvent::TakesDamage(_)) => "took too much damage".into(),
-        Trigger::Opponent(OpponentEvent::FallDamage) => "took fall damage".into(),
-        Trigger::Opponent(OpponentEvent::TouchesWater) => "touched water".into(),
-        Trigger::Opponent(OpponentEvent::EatsFood) => "ate food".into(),
-        _ => "slipped".into(),
-    }
-}
-
-/// Counts `key` once, completing when `amount` are seen.
-fn see(progress: &mut Progress, key: &str, amount: usize) -> Outcome {
-    if progress.seen.insert(key.to_owned()) {
-        if progress.seen.len() >= amount {
-            Outcome::Complete
-        } else {
-            Outcome::Progressed
-        }
-    } else {
-        Outcome::None
-    }
-}
-
-fn add(progress: &mut Progress, by: f64, amount: f64) -> Outcome {
-    progress.count += by;
-    if progress.count >= amount {
-        Outcome::Complete
-    } else {
-        Outcome::Progressed
-    }
-}
-
-fn yes(b: bool) -> Outcome {
-    if b { Outcome::Complete } else { Outcome::None }
-}
-
-/// What `event` does to a goal with `trigger`, for the team whose progress this is.
-fn evaluate(trigger: &Trigger, event: &Event, progress: &mut Progress, teams: usize) -> Outcome {
-    use Event as E;
-    use Trigger as T;
-    match (trigger, event) {
-        (T::ObtainAll { items, amount }, E::Inventory { stacks, .. }) => {
-            yes(!items.is_empty() && items.iter().all(|i| holds(stacks, i) >= *amount))
-        }
-        (T::ObtainSome { items, amount }, E::Inventory { stacks, .. }) => {
-            yes(items.iter().filter(|i| holds(stacks, i) > 0).count() >= *amount as usize)
-        }
-        (T::ObtainAny { items, amount }, E::Inventory { stacks, .. }) => {
-            yes(items.iter().any(|i| holds(stacks, i) >= *amount))
-        }
-        (T::StackOf64, E::Inventory { stacks, .. }) => yes(stacks.iter().take(36).flatten().any(|h| h.count >= 64)),
-        (T::FillInventoryUnique, E::Inventory { stacks, .. }) => {
-            let main: Vec<&str> = stacks.iter().take(36).flatten().map(|h| h.item.as_str()).collect();
-            let unique: BTreeSet<&str> = main.iter().copied().collect();
-            yes(main.len() == 36 && unique.len() == 36)
-        }
-        (T::ObtainPotion { potions }, E::Inventory { stacks, .. }) => yes(stacks
-            .iter()
-            .flatten()
-            .any(|h| h.potion.as_ref().is_some_and(|p| potions.contains(p)))),
-        (T::WearAll { items }, E::Inventory { stacks, .. }) => {
-            let worn = armor(stacks);
-            yes(items.iter().all(|i| worn.contains(&i.as_str())))
-        }
-        (T::WearAny { items }, E::Inventory { stacks, .. }) => {
-            yes(armor(stacks).iter().any(|w| items.iter().any(|i| i == w)))
-        }
-        (T::WearUniqueMaterials, E::Inventory { stacks, .. }) => {
-            let worn = armor(stacks);
-            let materials: BTreeSet<&str> = worn.iter().filter_map(|w| armor_material(w)).collect();
-            yes(worn.len() == 4 && materials.len() == 4)
-        }
-        (T::WearDyed { item, rgb }, E::Inventory { stacks, .. }) => {
-            yes(worn(stacks).any(|h| &h.item == item && h.dyed == Some(*rgb)))
-        }
-        (T::WearUniqueDyedLeather, E::Inventory { stacks, .. }) => {
-            let leather = ["helmet", "chestplate", "leggings", "boots"].map(|p| format!("minecraft:leather_{p}"));
-            let pieces: Vec<&Held> = worn(stacks).filter(|h| leather.contains(&h.item)).collect();
-            let colors: BTreeSet<i32> = pieces
-                .iter()
-                .filter_map(|h| h.dyed)
-                .filter(|c| *c != LEATHER_RGB)
-                .collect();
-            yes(pieces.len() == 4 && colors.len() == 4)
-        }
-        (T::Opponent(OpponentEvent::Obtains(item)), E::Inventory { stacks, .. }) if teams == 2 => {
-            if holds(stacks, item) > 0 {
-                Outcome::CompleteForOpponent
-            } else {
-                Outcome::None
-            }
-        }
-        (T::Advancement { ids }, E::Advancement { id, .. }) => yes(ids.contains(id)),
-        (T::UniqueAdvancements { amount }, E::Advancement { id, .. }) => {
-            if id.contains("recipes/") {
-                Outcome::None
-            } else {
-                see(progress, id, *amount)
-            }
-        }
-        (
-            T::Kill {
-                entities,
-                color,
-                dimension,
-            },
-            E::Kill {
-                kind,
-                color: c,
-                dimension: d,
-                ..
-            },
-        ) => yes(entities.contains(kind) && (color.is_none() || color == c) && (dimension.is_none() || dimension == d)),
-        (T::KillCount { entities, amount }, E::Kill { kind, .. }) => {
-            if entities.as_ref().is_none_or(|e| e.contains(kind)) {
-                add(progress, 1.0, *amount as f64)
-            } else {
-                Outcome::None
-            }
-        }
-        (T::KillAll { entities }, E::Kill { kind, .. }) if entities.contains(kind) => {
-            see(progress, kind, entities.len())
-        }
-        (T::KillUniqueHostile { amount }, E::Kill { kind, .. }) if HOSTILE.contains(&kind.as_str()) => {
-            see(progress, kind, *amount)
-        }
-        (T::DieTo { damage_types }, E::Death { damage_type, .. }) => yes(damage_types.contains(damage_type)),
-        (
-            T::DieToEntity { entities },
-            E::Death {
-                killer_kind: Some(k), ..
-            },
-        ) => yes(entities.contains(k)),
-        (
-            T::DieByMessage { key },
-            E::Death {
-                message_key: Some(k), ..
-            },
-        ) => yes(k == key),
-        (T::DieUniqueWays { amount }, E::Death { damage_type, .. }) => see(progress, damage_type, *amount),
-        (T::Opponent(OpponentEvent::Dies { times }), E::Death { .. }) if teams == 2 => {
-            progress.count += 1.0;
-            if progress.count >= *times as f64 {
-                Outcome::CompleteForOpponent
-            } else {
-                Outcome::None
-            }
-        }
-        (T::Breed { entities }, E::Breed { kind, .. }) => yes(entities.contains(kind)),
-        (T::BreedUnique { amount }, E::Breed { kind, .. }) => see(progress, kind, *amount),
-        (T::Tame { entities }, E::Tame { kind, .. }) => yes(entities.contains(kind)),
-        (T::Effect { effects }, E::EffectAdded { effect, .. }) => yes(effects.contains(effect)),
-        (T::Effect { effects }, E::Effects { effects: now, .. }) => yes(now.iter().any(|e| effects.contains(e))),
-        (T::EffectsAtOnce { amount }, E::Effects { effects, .. }) => yes(effects.len() >= *amount),
-        (T::Consume { items }, E::Consumed { item, .. }) => yes(items.contains(item)),
-        (T::DrinkPotion { potions }, E::Consumed { item, potion, .. }) => {
-            yes(item == "minecraft:potion" && potion.as_ref().is_some_and(|p| potions.contains(p)))
-        }
-        (T::EatUnique { amount }, E::Consumed { item, .. })
-            if !item.ends_with("potion") && item != "minecraft:milk_bucket" && item != "minecraft:honey_bottle" =>
-        {
-            see(progress, item, *amount)
-        }
-        (T::EatAll { items }, E::Consumed { item, .. }) if items.contains(item) => see(progress, item, items.len()),
-        (T::Opponent(OpponentEvent::EatsFood), E::Food { from, to, .. }) if teams == 2 && to > from => {
-            Outcome::CompleteForOpponent
-        }
-        (T::Stat { stats }, E::Stat { stat, .. }) => yes(stats.contains(stat)),
-        (T::SprintCm { cm }, E::SprintCm { cm: now, .. }) => yes(now >= cm),
-        (T::Mine { blocks }, E::Mined { block, .. }) => yes(blocks.contains(block)),
-        (T::MineUnique { blocks, amount }, E::Mined { block, .. }) if blocks.contains(block) => {
-            see(progress, block, *amount)
-        }
-        (T::Dimension { dimension }, E::Dimension { dimension: d, .. }) => yes(d == dimension),
-        (T::Dimension { dimension }, E::Position { dimension: d, .. }) => yes(d == dimension),
-        (T::Biome { biomes }, E::Position { biome: Some(b), .. }) => yes(biomes.contains(b)),
-        (T::BiomesAll { biomes }, E::Position { biome: Some(b), .. }) if biomes.contains(b) => {
-            see(progress, b, biomes.len())
-        }
-        (T::UniqueBiomes { amount }, E::Position { biome: Some(b), .. }) => see(progress, b, *amount),
-        (T::Height { dimension, min_y }, E::Position { dimension: d, y, .. }) => yes(d == dimension && y >= min_y),
-        (
-            T::StandOn { dimension, block },
-            E::Position {
-                dimension: d,
-                below: Some(b),
-                ..
-            },
-        ) => yes(d == dimension && b == block),
-        (T::Opponent(OpponentEvent::TouchesWater), E::Position { in_water: true, .. }) if teams == 2 => {
-            Outcome::CompleteForOpponent
-        }
-        (T::Opponent(OpponentEvent::CatchesFire), E::Position { on_fire: true, .. }) if teams == 2 => {
-            Outcome::CompleteForOpponent
-        }
-        (T::XpLevel { level }, E::XpLevel { level: l, .. }) => yes(l >= level),
-        (T::CraftUnique { amount }, E::Crafted { item, .. }) => see(progress, item, *amount),
-        (T::MostUniqueCrafts, E::Crafted { item, .. }) => {
-            progress.seen.insert(item.clone());
-            Outcome::None
-        }
-        (T::CraftItemSuffix { suffix }, E::Crafted { item, .. }) => yes(item.ends_with(suffix.as_str())),
-        (T::Ride { entities }, E::Ride { vehicle, .. }) => yes(entities.contains(vehicle)),
-        (T::Name { entity, name }, E::Named { kind, name: n, .. }) => yes(kind == entity && n == name),
-        (T::BreakItem { matcher }, E::ItemBroken { item, .. }) => yes(matcher.matches(item)),
-        (T::PlaceBlockSuffix { suffix }, E::PlacedBlock { item, .. }) => yes(item.ends_with(suffix.as_str())),
-        (T::PlaceHanging { kind }, E::PlacedHanging { kind: k, .. }) => yes(k == kind),
-        (T::UseItem { item }, E::UsedItem { item: i, .. }) => yes(i == item),
-        (T::MilkAwayEffect, E::MilkAway { .. }) => Outcome::Complete,
-        (T::EmptyHunger, E::Food { to, .. }) => yes(*to == 0),
-        (T::Enrage { entity }, E::Enraged { kind, .. }) => yes(kind == entity),
-        (T::ShieldDisabled, E::ShieldDisabled { .. })
-        | (T::ItemFrameInItemFrame, E::ItemFrameInFrame { .. })
-        | (T::WolfArmor, E::WolfArmor { .. })
-        | (T::Stonecutter, E::Stonecutter { .. })
-        | (T::Loom, E::Loom { .. })
-        | (T::Anvil, E::Anvil { .. }) => Outcome::Complete,
-        (
-            T::TakeDamage { amount },
-            E::Damage {
-                victim: Some(_),
-                amount: a,
-                ..
-            },
-        ) => add(progress, *a as f64, *amount as f64),
-        (
-            T::DealDamage { amount },
-            E::Damage {
-                attacker: Some(_),
-                amount: a,
-                ..
-            },
-        ) => add(progress, *a as f64, *amount as f64),
-        (
-            T::Opponent(OpponentEvent::TakesDamage(limit)),
-            E::Damage {
-                victim: Some(_),
-                amount,
-                ..
-            },
-        ) if teams == 2 => {
-            progress.count += *amount as f64;
-            if progress.count >= *limit as f64 {
-                Outcome::CompleteForOpponent
-            } else {
-                Outcome::None
-            }
-        }
-        (
-            T::Opponent(OpponentEvent::FallDamage),
-            E::Damage {
-                victim: Some(_),
-                damage_type,
-                ..
-            },
-        ) if teams == 2 && damage_type == "minecraft:fall" => Outcome::CompleteForOpponent,
-        (
-            T::Opponent(OpponentEvent::CatchesFire),
-            E::Damage {
-                victim: Some(_),
-                damage_type,
-                ..
-            },
-        ) if teams == 2 && (damage_type == "minecraft:on_fire" || damage_type == "minecraft:in_fire") => {
-            Outcome::CompleteForOpponent
-        }
-        (T::Opponent(OpponentEvent::HitBy(kind)), E::HitBy { projectile, .. }) if teams == 2 && projectile == kind => {
-            Outcome::CompleteForOpponent
-        }
-        _ => Outcome::None,
     }
 }
 
@@ -1690,6 +929,7 @@ pub fn invalid_goals(goals: &[(String, String)]) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::rules::Polled;
 
     const A: u128 = 1;
     const B: u128 = 2;
@@ -1702,6 +942,7 @@ mod tests {
                 dimension: "minecraft:overworld".into(),
                 position: [0.0, 64.0, 0.0],
                 xp_level: *l,
+                dead: false,
             })
             .collect()
     }
@@ -1736,6 +977,43 @@ mod tests {
             .collect()
     }
 
+    fn tooltips(actions: &[Action], to: u128) -> Vec<String> {
+        actions
+            .iter()
+            .filter_map(|a| match a {
+                Action::Send {
+                    player,
+                    payload: Payload::UpdateTooltip { tooltip, .. },
+                } if *player == to => Some(tooltip.clone()),
+                _ => None,
+            })
+            .collect()
+    }
+
+    fn polled(player: u128, stacks: Vec<Option<Held>>) -> Event {
+        Event::Tick(Box::new(Polled {
+            player,
+            name: if player == A { "Alex".into() } else { "Steve".into() },
+            stacks,
+            dimension: "minecraft:overworld".into(),
+            y: 64.0,
+            inside: "minecraft:air".into(),
+            below: "minecraft:stone".into(),
+            food: 20,
+            ..Polled::default()
+        }))
+    }
+
+    fn kill(player: u128, kind: &str) -> Event {
+        Event::Kill {
+            player,
+            kind: format!("minecraft:{kind}"),
+            color: None,
+            dimension: "minecraft:overworld".into(),
+            damage_type: "minecraft:player_attack".into(),
+        }
+    }
+
     #[test]
     fn entering_the_nether_completes_for_the_player_team() {
         let mut s = running(&["ENTER_NETHER", "ENTER_END", "KILL_WITCH"]);
@@ -1763,32 +1041,30 @@ mod tests {
     }
 
     #[test]
-    fn unique_goals_count_each_kind_once_and_send_progress() {
+    fn unique_kills_count_each_kind_once_with_the_java_tooltip() {
         let mut s = running(&["KILL_7_UNIQUE_HOSTILE_MOBS", "ENTER_END", "ENTER_NETHER"]);
+        let mut last = Vec::new();
         for kind in [
             "zombie", "zombie", "skeleton", "creeper", "spider", "witch", "pig", "enderman",
         ] {
-            let out = s.handle(
-                Event::Kill {
-                    player: A,
-                    kind: format!("minecraft:{kind}"),
-                    color: None,
-                    dimension: None,
-                },
-                &[A, B],
-            );
-            assert!(completed(&out).is_empty());
+            last = s.handle(kill(A, kind), &[A, B]);
+            assert!(completed(&last).is_empty());
         }
-        let out = s.handle(
-            Event::Kill {
-                player: A,
-                kind: "minecraft:blaze".into(),
-                color: None,
-                dimension: None,
-            },
-            &[A, B],
+        assert_eq!(
+            tooltips(&last, A),
+            vec![
+                " \nUnique Hostile Mobs Killed: 6/7\n§7 §oZombie, Skeleton, Creeper, Spider, Witch,\n§7 §oEnderman\n "
+            ]
         );
+        let out = s.handle(kill(A, "blaze"), &[A, B]);
         assert_eq!(completed(&out), vec![("KILL_7_UNIQUE_HOSTILE_MOBS".into(), 0)]);
+        assert!(out.contains(&tell(A, "Alex completed Kill 7 Unique Hostile Mobs.", GREEN)));
+        // Spectators see every team's count.
+        let m = s.game.as_ref().unwrap();
+        assert_eq!(
+            m.tooltip(0, crate::rules::Viewer::Spectator).unwrap(),
+            " \n§cAlex§r: 7/7\n§9Steve§r: 0/7\n "
+        );
     }
 
     #[test]
@@ -1810,19 +1086,13 @@ mod tests {
         for (i, p) in ["boots", "leggings", "chestplate", "helmet"].iter().enumerate() {
             stacks[36 + i] = Some(Held::new(&format!("minecraft:leather_{p}"), 1));
         }
-        let out = s.handle(
-            Event::Inventory {
-                player: A,
-                stacks: stacks.clone(),
-            },
-            &[A, B],
-        );
+        let out = s.handle(polled(A, stacks.clone()), &[A, B]);
         assert_eq!(
             completed(&out),
             vec![("WEAR_LEATHER_ARMOR".into(), 0), ("OBTAIN_64_ARROWS".into(), 0)]
         );
         stacks[4] = Some(Held::new("minecraft:wooden_shovel", 1));
-        let out = s.handle(Event::Inventory { player: B, stacks }, &[A, B]);
+        let out = s.handle(polled(B, stacks), &[A, B]);
         assert_eq!(completed(&out), vec![("OBTAIN_WOODEN_TOOLS".into(), 1)]);
     }
 
@@ -1853,27 +1123,19 @@ mod tests {
             dyed: Some(0x3C44AA),
             ..Held::new("minecraft:leather_boots", 1)
         });
-        assert!(
-            completed(&s.handle(
-                Event::Inventory {
-                    player: A,
-                    stacks: stacks.clone()
-                },
-                &[A, B]
-            ))
-            .is_empty()
-        );
+        assert!(completed(&s.handle(polled(A, stacks.clone()), &[A, B])).is_empty());
         stacks[36] = Some(Held {
             dyed: Some(0xB02E26),
             ..Held::new("minecraft:leather_boots", 1)
         });
-        let out = s.handle(Event::Inventory { player: A, stacks }, &[A, B]);
+        let out = s.handle(polled(A, stacks), &[A, B]);
         assert_eq!(completed(&out), vec![("WEAR_COLORED_LEATHER_ARMOR_PIECE".into(), 0)]);
         let golem = |d: &str| Event::Kill {
             player: B,
             kind: "minecraft:snow_golem".into(),
             color: None,
-            dimension: Some(d.into()),
+            dimension: d.into(),
+            damage_type: "minecraft:player_attack".into(),
         };
         assert!(completed(&s.handle(golem("minecraft:overworld"), &[A, B])).is_empty());
         assert_eq!(
@@ -1907,12 +1169,133 @@ mod tests {
     }
 
     #[test]
-    fn opponent_goals_go_to_the_other_team() {
-        let mut s = running(&["OPPONENT_OBTAINS_OBSIDIAN", "ENTER_END", "KILL_WITCH"]);
+    fn opponent_goals_go_to_the_other_team_with_the_java_line() {
+        let mut s = running(&[
+            "OPPONENT_OBTAINS_OBSIDIAN",
+            "OPPONENT_TOUCHES_WATER",
+            "ENTER_END",
+            "KILL_WITCH",
+        ]);
         let mut stacks = vec![None; 41];
         stacks[0] = Some(Held::new("minecraft:obsidian", 1));
-        let out = s.handle(Event::Inventory { player: A, stacks }, &[A, B]);
+        let out = s.handle(polled(A, stacks), &[A, B]);
         assert_eq!(completed(&out), vec![("OPPONENT_OBTAINS_OBSIDIAN".into(), 1)]);
+        assert!(out.contains(&tell(B, "Alex obtained Obsidian.", GREEN)));
+        assert!(out.contains(&tell(A, "Alex obtained Obsidian.", RED)));
+        let Event::Tick(mut p) = polled(B, vec![None; 41]) else {
+            unreachable!()
+        };
+        p.inside = "minecraft:water".into();
+        let out = s.handle(Event::Tick(p), &[A, B]);
+        assert_eq!(completed(&out), vec![("OPPONENT_TOUCHES_WATER".into(), 0)]);
+        assert!(out.contains(&tell(A, "Steve touched water.", GREEN)));
+    }
+
+    #[test]
+    fn a_pig_needs_a_carrot_on_a_stick() {
+        let mut s = running(&["RIDE_PIG", "ENTER_END", "KILL_WITCH"]);
+        let Event::Tick(mut p) = polled(A, vec![None; 41]) else {
+            unreachable!()
+        };
+        p.vehicle = Some("minecraft:pig".into());
+        assert!(completed(&s.handle(Event::Tick(p.clone()), &[A, B])).is_empty());
+        p.stacks[3] = Some(Held::new("minecraft:carrot_on_a_stick", 1));
+        p.selected = 3;
+        assert_eq!(
+            completed(&s.handle(Event::Tick(p), &[A, B])),
+            vec![("RIDE_PIG".into(), 0)]
+        );
+    }
+
+    #[test]
+    fn the_carved_pumpkin_counts_five_minutes_worn() {
+        let mut s = running(&["WEAR_CARVED_PUMPKIN_FOR_5_MINUTES", "ENTER_END", "KILL_WITCH"]);
+        let mut stacks = vec![None; 41];
+        stacks[39] = Some(Held::new("minecraft:carved_pumpkin", 1));
+        for _ in 0..(5 * 60 * 20 - 1) {
+            assert!(completed(&s.handle(polled(A, stacks.clone()), &[A, B])).is_empty());
+        }
+        let out = s.handle(polled(A, stacks), &[A, B]);
+        assert_eq!(completed(&out), vec![("WEAR_CARVED_PUMPKIN_FOR_5_MINUTES".into(), 0)]);
+        let m = s.game.as_ref().unwrap();
+        assert_eq!(
+            m.tooltip(0, crate::rules::Viewer::Player(0, A)).unwrap(),
+            " \nTime worn: 05:00\n "
+        );
+    }
+
+    #[test]
+    fn biomes_are_adventuring_time_criteria() {
+        let mut s = running(&[
+            "VISIT_MUSHROOM_BIOME",
+            "VISIT_10_UNIQUE_BIOMES",
+            "ENTER_END",
+            "KILL_WITCH",
+        ]);
+        let visit = |b: &str| Event::Criterion {
+            player: B,
+            advancement: "minecraft:adventure/adventuring_time".into(),
+            criterion: format!("minecraft:{b}"),
+        };
+        let out = s.handle(visit("mushroom_fields"), &[A, B]);
+        assert_eq!(completed(&out), vec![("VISIT_MUSHROOM_BIOME".into(), 1)]);
+        assert_eq!(
+            tooltips(&out, B),
+            vec![" \nBiomes visited: 1/10\n§7 §oMushroom Fields\n "]
+        );
+        // Another advancement's criteria are no biomes.
+        let other = Event::Criterion {
+            player: B,
+            advancement: "minecraft:husbandry/balanced_diet".into(),
+            criterion: "minecraft:apple".into(),
+        };
+        assert!(s.handle(other, &[A, B]).is_empty());
+    }
+
+    #[test]
+    fn only_foods_count_as_eaten_and_honey_is_one() {
+        let mut s = running(&["EAT_5_UNIQUE_FOOD", "OPPONENT_EATS_FOOD", "ENTER_END", "KILL_WITCH"]);
+        let eat = |item: &str, food: bool| Event::Consumed {
+            player: A,
+            item: format!("minecraft:{item}"),
+            potion: None,
+            food,
+        };
+        assert!(completed(&s.handle(eat("milk_bucket", false), &[A, B])).is_empty());
+        let out = s.handle(eat("honey_bottle", true), &[A, B]);
+        assert_eq!(completed(&out), vec![("OPPONENT_EATS_FOOD".into(), 1)]);
+        assert!(out.contains(&tell(A, "Alex ate food.", RED)));
+        for item in ["beef", "apple", "bread"] {
+            s.handle(eat(item, true), &[A, B]);
+        }
+        let out = s.handle(eat("cookie", true), &[A, B]);
+        assert_eq!(completed(&out), vec![("EAT_5_UNIQUE_FOOD".into(), 0)]);
+        assert!(out.contains(&tell(A, "Alex completed Eat 5 Unique Food.", GREEN)));
+    }
+
+    #[test]
+    fn damage_goals_count_landed_hits_by_team() {
+        let mut s = running(&[
+            "TAKE_200_DAMAGE",
+            "OPPONENT_TAKES_FALL_DAMAGE",
+            "ENTER_END",
+            "KILL_WITCH",
+        ]);
+        let hit = |amount: f64, damage_type: &str| Event::Damage {
+            victim: Some(B),
+            attacker: None,
+            arrow: false,
+            damage_type: damage_type.into(),
+            amount,
+        };
+        let out = s.handle(hit(150.5, "minecraft:lava"), &[A, B]);
+        assert_eq!(tooltips(&out, B), vec![" \nDamage: 150/200\n "]);
+        let out = s.handle(hit(3.0, "minecraft:fall"), &[A, B]);
+        assert_eq!(completed(&out), vec![("OPPONENT_TAKES_FALL_DAMAGE".into(), 0)]);
+        assert!(out.contains(&tell(B, "Steve took fall damage.", RED)));
+        let out = s.handle(hit(50.0, "minecraft:lava"), &[A, B]);
+        assert_eq!(completed(&out), vec![("TAKE_200_DAMAGE".into(), 1)]);
+        assert!(out.contains(&tell(B, "Steve completed Take 200 damage.", GREEN)));
     }
 
     #[test]
@@ -1942,7 +1325,7 @@ mod tests {
     }
 
     #[test]
-    fn most_xp_levels_moves_with_the_leader() {
+    fn most_xp_levels_stays_with_its_holder_on_a_tie() {
         let mut s = running(&[
             "HAVE_MORE_XP_LEVELS",
             "ENTER_END",
@@ -1950,13 +1333,17 @@ mod tests {
             "ENTER_NETHER",
             "KILL_GHAST",
         ]);
-        s.game.as_mut().unwrap().ticks = 19;
         s.tick(&online(&[(A, 5), (B, 3)]), &[]);
         assert_eq!(s.game.as_ref().unwrap().board[0].completed_by, Some(0));
-        s.game.as_mut().unwrap().ticks = 39;
+        // `recalculateXPGoal`: a tie keeps the goal where it is.
+        s.tick(&online(&[(A, 5), (B, 5)]), &[]);
+        assert_eq!(s.game.as_ref().unwrap().board[0].completed_by, Some(0));
         s.tick(&online(&[(A, 5), (B, 9)]), &[]);
         assert_eq!(s.game.as_ref().unwrap().board[0].completed_by, Some(1));
         let points: Vec<u32> = s.game.as_ref().unwrap().teams.iter().map(|t| t.points).collect();
         assert_eq!(points, vec![0, 1]);
+        // Nobody with a level: nobody has it.
+        let out = s.tick(&online(&[(A, 0), (B, 0)]), &[]);
+        assert_eq!(completed(&out), vec![("HAVE_MORE_XP_LEVELS".into(), -1)]);
     }
 }

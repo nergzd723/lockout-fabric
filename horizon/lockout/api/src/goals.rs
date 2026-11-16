@@ -47,8 +47,10 @@ pub const HOSTILE: &[&str] = &[
     "minecraft:evoker",
     "minecraft:ghast",
     "minecraft:guardian",
+    "minecraft:giant",
     "minecraft:hoglin",
     "minecraft:husk",
+    "minecraft:illusioner",
     "minecraft:magma_cube",
     "minecraft:parched",
     "minecraft:phantom",
@@ -104,60 +106,74 @@ fn texture_layer(path: &str) -> Layer {
     }
 }
 
-/// What completes a goal on a Horizon server. `Unsupported` goals still draw on the board
-/// (a Fabric server may send them) but aren't put on boards this port generates.
+/// What completes a goal, as its Java class decides it. `Unsupported` goals (only ids a
+/// newer Fabric server may send) still draw on the board but aren't put on boards this port
+/// generates.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Trigger {
-    /// Hold every item, each at least `amount` times.
+    /// `ObtainAllItemsGoal`: every item held, each `amount` times (`RequiresAmount`).
     ObtainAll {
         items: Vec<String>,
         amount: u32,
     },
-    /// Hold `amount` of the listed items, any of them.
+    /// `ObtainSomeOfTheItemsGoal`: `amount` of the listed items held.
     ObtainSome {
         items: Vec<String>,
         amount: u32,
     },
-    /// Hold `amount` of any one listed item.
+    /// `Obtain32ArrowsGoal`: `amount` of any one listed item.
     ObtainAny {
         items: Vec<String>,
         amount: u32,
     },
-    /// A stack of 64 of anything.
     StackOf64,
-    /// Every inventory slot full, no item twice.
     FillInventoryUnique,
-    /// A potion item of one of these potions.
-    ObtainPotion {
+    /// `ObtainShieldWithBannerGoal`.
+    ShieldWithBanner,
+    /// `ObtainPotionItemGoal`: one of these potions taken out of a brewing stand.
+    Brewed {
         potions: Vec<String>,
     },
+    /// `BrewLingeringPotionGoal`: a lingering potion taken out of a brewing stand.
+    BrewLingering,
+    /// `WearArmorGoal`.
     WearAll {
         items: Vec<String>,
     },
+    /// `WearArmorPieceGoal`.
     WearAny {
         items: Vec<String>,
     },
     WearUniqueMaterials,
-    /// A worn piece of `item` dyed exactly `rgb`.
     WearDyed {
         item: String,
         rgb: i32,
     },
-    /// Full leather armour in four colours, none undyed.
     WearUniqueDyedLeather,
+    /// `WearFullEnchantedArmorGoal`.
+    WearEnchanted,
+    /// `WearCarvedPumpkinFor5MinutesGoal`.
+    WearPumpkin {
+        ticks: i64,
+    },
     Advancement {
         ids: Vec<String>,
     },
     UniqueAdvancements {
         amount: usize,
     },
+    /// `KillMobGoal`, with its subclasses' conditions.
     Kill {
         entities: Vec<String>,
         color: Option<String>,
         dimension: Option<String>,
+        damage_type: Option<String>,
     },
+    /// `KillSpecificMobsGoal` (undead, arthropods) and `Kill100MobsGoal` (any mob).
     KillCount {
-        entities: Option<Vec<String>>,
+        counter: Counter,
+        /// The mobs that count; every mob for `Counter::All`.
+        entities: Vec<String>,
         amount: u32,
     },
     KillAll {
@@ -172,9 +188,11 @@ pub enum Trigger {
     DieToEntity {
         entities: Vec<String>,
     },
-    DieByMessage {
-        key: String,
+    /// `DieToFallingOffVinesGoal`: a fall from one of these climbables.
+    DieFalling {
+        keys: Vec<String>,
     },
+    DieToTntMinecart,
     DieUniqueWays {
         amount: usize,
     },
@@ -202,8 +220,12 @@ pub enum Trigger {
     EatUnique {
         amount: usize,
     },
+    /// `EatAllSoupsGoal`.
     EatAll {
         items: Vec<String>,
+    },
+    CompostUnique {
+        amount: usize,
     },
     Stat {
         stats: Vec<String>,
@@ -211,6 +233,7 @@ pub enum Trigger {
     Mine {
         blocks: Vec<String>,
     },
+    /// `Mine3TypesOfIceGoal`.
     MineUnique {
         blocks: Vec<String>,
         amount: usize,
@@ -221,6 +244,7 @@ pub enum Trigger {
     Biome {
         biomes: Vec<String>,
     },
+    /// `VisitAllCaveBiomesGoal`.
     BiomesAll {
         biomes: Vec<String>,
     },
@@ -233,6 +257,7 @@ pub enum Trigger {
     CraftUnique {
         amount: usize,
     },
+    /// `DuplicateArmorTrimGoal`: a trim template crafted.
     CraftItemSuffix {
         suffix: String,
     },
@@ -241,19 +266,14 @@ pub enum Trigger {
     },
     Name {
         entity: String,
-        name: String,
+        names: Vec<String>,
     },
     BreakItem {
         matcher: ItemMatch,
     },
-    PlaceBlockSuffix {
-        suffix: String,
-    },
-    PlaceHanging {
-        kind: String,
-    },
-    UseItem {
-        item: String,
+    /// `PlaceItemGoal`: the item used on a block (placed).
+    PlaceItem {
+        matcher: ItemMatch,
     },
     MilkAwayEffect,
     EmptyHunger,
@@ -261,42 +281,96 @@ pub enum Trigger {
         dimension: String,
         min_y: f64,
     },
-    StandOn {
-        dimension: String,
-        block: String,
-    },
+    /// `ReachBedrockGoal`: standing on bedrock below y 10.
+    ReachBedrock,
     Enrage {
         entity: String,
     },
-    ShieldDisabled,
-    ItemFrameInItemFrame,
-    WolfArmor,
-    Stonecutter,
-    Loom,
-    Anvil,
+    Spy {
+        entity: String,
+    },
+    SpyUnique {
+        amount: usize,
+    },
+    LeashUnique {
+        amount: usize,
+    },
+    LeashIronGolem,
     KillOtherPlayer,
     ShootOpponentWithArrow,
     PickUpOpponentItem,
     TakeDamage {
-        amount: f32,
+        amount: f64,
     },
     DealDamage {
-        amount: f32,
+        amount: f64,
     },
     SprintCm {
         cm: i32,
     },
     MostXpLevels,
     MostUniqueCrafts,
-    /// Completed for the other team when the event happens to a player (1v1 goals).
+    /// A goal its own mixin completes for the player who did it.
+    Deed(Deed),
+    /// 1v1 goals about what happens to an opponent.
     Opponent(OpponentEvent),
     Unsupported,
+}
+
+/// Which kill counter a `KillCount` goal reads (`Lockout.killedUndeadMobs`, ...).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Counter {
+    Undead,
+    Arthropods,
+    /// `Lockout.mobsKilled`: every mob.
+    All,
+}
+
+/// Something one player does that completes a goal for them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Deed {
+    FillArmorStand,
+    PlaceEndCrystal,
+    ExplodeEndCrystal,
+    UseGrindstone,
+    UseSmithingTable,
+    UseStonecutter,
+    UseLoom,
+    UseAnvil,
+    UseCartographyTable,
+    LockMap,
+    UseComposter,
+    GlowInkCrimson,
+    GlowInkWarped,
+    GlowInkNether,
+    FillCampfire,
+    FillChiseledBookshelf,
+    Brush,
+    ShootFireworkFromCrossbow,
+    LightCandle,
+    FillBundleWithBundles,
+    ConstructCopperGolem,
+    DuplicateAllay,
+    GoldenDandelion,
+    FillDecoratedPot,
+    PearlThroughPortal,
+    LootAbandonedCamp,
+    TootGoatHorn,
+    ShieldDisabled,
+    ItemFrameInItemFrame,
+    WolfArmor,
+    /// `CreakingHeartBlockEntityMixin`: a heart broken while its Creaking is out.
+    KillCreaking,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ItemMatch {
     Any(Vec<String>),
+    /// `ItemTags.HANGING_SIGNS`.
+    HangingSign,
+    /// `ItemTags.HEAD_ARMOR`, `CHEST_ARMOR`, `LEG_ARMOR` or `FOOT_ARMOR`.
     Armor,
+    /// `BreakAnyToolGoal`: axes, hoes, pickaxes, swords, shovels, spears and a few others.
     Tool,
 }
 
@@ -305,6 +379,7 @@ impl ItemMatch {
         let path = item.rsplit(':').next().unwrap_or(item);
         match self {
             ItemMatch::Any(items) => items.iter().any(|i| i == item),
+            ItemMatch::HangingSign => path.ends_with("_hanging_sign"),
             ItemMatch::Armor => ["_helmet", "_chestplate", "_leggings", "_boots"]
                 .iter()
                 .any(|s| path.ends_with(s)),
@@ -319,11 +394,6 @@ impl ItemMatch {
                         "brush",
                         "carrot_on_a_stick",
                         "warped_fungus_on_a_stick",
-                        "bow",
-                        "crossbow",
-                        "trident",
-                        "mace",
-                        "shield",
                     ]
                     .contains(&path)
             }
@@ -333,11 +403,14 @@ impl ItemMatch {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum OpponentEvent {
-    Obtains(String),
-    Dies { times: u32 },
+    /// `OpponentObtainsItemGoal`: the item, and its name in the chat line.
+    Obtains(String, String),
+    Dies {
+        times: i32,
+    },
     CatchesFire,
     HitBy(String),
-    TakesDamage(f32),
+    TakesDamage(f64),
     FallDamage,
     TouchesWater,
     EatsFood,
@@ -617,6 +690,7 @@ impl GoalDef {
         let amount = self.amount.unwrap_or(1);
         let dye = dye_of(data);
         let colored = |base: &str| dye.map(|d| vec![format!("minecraft:{d}_{base}")]).unwrap_or_default();
+        let deed = |d| Some(Trigger::Deed(d));
         // Goals whose Java class has its own logic.
         let special = match self.id.as_str() {
             "OBTAIN_COLORED_GLAZED_TERRACOTTA" => Some(Trigger::ObtainAll {
@@ -639,15 +713,23 @@ impl GoalDef {
                 entities: vec!["minecraft:sheep".into()],
                 color: dye.map(str::to_owned),
                 dimension: None,
-            }),
-            "OBTAIN_32_ARROWS" => Some(Trigger::ObtainAny {
-                items: self.items.clone(),
-                amount,
+                damage_type: None,
             }),
             "KILL_SNOW_GOLEM_IN_NETHER" => Some(Trigger::Kill {
                 entities: vec!["minecraft:snow_golem".into()],
                 color: None,
                 dimension: Some("minecraft:the_nether".into()),
+                damage_type: None,
+            }),
+            "KILL_BREEZE_USING_WIND_CHARGE" => Some(Trigger::Kill {
+                entities: vec!["minecraft:breeze".into()],
+                color: None,
+                dimension: None,
+                damage_type: Some("minecraft:wind_charge".into()),
+            }),
+            "OBTAIN_32_ARROWS" => Some(Trigger::ObtainAny {
+                items: self.items.clone(),
+                amount,
             }),
             "WEAR_COLORED_LEATHER_ARMOR_PIECE" => match (piece_of(data), dye.and_then(dye_rgb)) {
                 (Some(piece), Some(rgb)) => Some(Trigger::WearDyed {
@@ -657,25 +739,19 @@ impl GoalDef {
                 _ => Some(Trigger::Unsupported),
             },
             "WEAR_UNIQUE_COLORED_LEATHER_ARMOR" => Some(Trigger::WearUniqueDyedLeather),
+            "WEAR_FULL_ENCHANTED_ARMOR" => Some(Trigger::WearEnchanted),
+            "WEAR_CARVED_PUMPKIN_FOR_5_MINUTES" => Some(Trigger::WearPumpkin { ticks: 5 * 60 * 20 }),
             "OBTAIN_STACK_OF_64" => Some(Trigger::StackOf64),
             "FILL_INVENTORY_UNIQUE_ITEMS" => Some(Trigger::FillInventoryUnique),
             "WEAR_UNIQUE_ARMOR" => Some(Trigger::WearUniqueMaterials),
-            "BREW_LINGERING_POTION" => Some(Trigger::ObtainAll {
-                items: vec!["minecraft:lingering_potion".into()],
-                amount: 1,
-            }),
-            "TOOT_GOAT_HORN" => Some(Trigger::UseItem {
-                item: "minecraft:goat_horn".into(),
-            }),
+            "PUT_BANNER_ON_SHIELD" => Some(Trigger::ShieldWithBanner),
+            "BREW_LINGERING_POTION" => Some(Trigger::BrewLingering),
             "REMOVE_STATUS_EFFECT_USING_MILK" => Some(Trigger::MilkAwayEffect),
             "GET_3_STATUS_EFFECTS_AT_ONCE" | "GET_4_STATUS_EFFECTS_AT_ONCE" | "GET_6_STATUS_EFFECTS_AT_ONCE" => {
                 Some(Trigger::EffectsAtOnce {
                     amount: amount as usize,
                 })
             }
-            "USE_STONECUTTER" => Some(Trigger::Stonecutter),
-            "USE_LOOM" => Some(Trigger::Loom),
-            "USE_ANVIL" => Some(Trigger::Anvil),
             "EMPTY_HUNGER_BAR" => Some(Trigger::EmptyHunger),
             "REACH_HEIGHT_LIMIT" => Some(Trigger::Height {
                 dimension: "minecraft:overworld".into(),
@@ -685,32 +761,41 @@ impl GoalDef {
                 dimension: "minecraft:the_nether".into(),
                 min_y: 128.0,
             }),
-            "REACH_BEDROCK" => Some(Trigger::StandOn {
-                dimension: "minecraft:overworld".into(),
-                block: "minecraft:bedrock".into(),
-            }),
+            "REACH_BEDROCK" => Some(Trigger::ReachBedrock),
             "ENRAGE_ZOMBIFIED_PIGLIN" => Some(Trigger::Enrage {
                 entity: "minecraft:zombified_piglin".into(),
             }),
             "ENRAGE_ENDERMAN" => Some(Trigger::Enrage {
                 entity: "minecraft:enderman".into(),
             }),
+            "LEASH_IRON_GOLEM" => Some(Trigger::LeashIronGolem),
             "KILL_OTHER_PLAYER" => Some(Trigger::KillOtherPlayer),
-            "KILL_100_MOBS" => Some(Trigger::KillCount { entities: None, amount }),
+            "KILL_100_MOBS" => Some(Trigger::KillCount {
+                counter: Counter::All,
+                entities: self.entities.clone(),
+                amount,
+            }),
+            "KILL_30_UNDEAD_MOBS" => Some(Trigger::KillCount {
+                counter: Counter::Undead,
+                entities: self.entities.clone(),
+                amount,
+            }),
+            "KILL_20_ARTHROPOD_MOBS" => Some(Trigger::KillCount {
+                counter: Counter::Arthropods,
+                entities: self.entities.clone(),
+                amount,
+            }),
             "TAKE_200_DAMAGE" => Some(Trigger::TakeDamage { amount: 200.0 }),
             "DEAL_400_DAMAGE" => Some(Trigger::DealDamage { amount: 400.0 }),
             "SPRINT_1_KM" => Some(Trigger::SprintCm { cm: 100_000 }),
             "HAVE_MORE_XP_LEVELS" => Some(Trigger::MostXpLevels),
             "HAVE_MORE_UNIQUE_CRAFTS" => Some(Trigger::MostUniqueCrafts),
-            "HAVE_YOUR_SHIELD_DISABLED" => Some(Trigger::ShieldDisabled),
-            "ITEM_FRAME_IN_ITEM_FRAME" => Some(Trigger::ItemFrameInItemFrame),
-            "PUT_WOLF_ARMOR_ON_WOLF" => Some(Trigger::WolfArmor),
             "DUPLICATE_ARMOR_TRIM" => Some(Trigger::CraftItemSuffix {
                 suffix: "_armor_trim_smithing_template".into(),
             }),
             "MINE_3_TYPES_OF_ICE" => Some(Trigger::MineUnique {
                 blocks: self.items.clone(),
-                amount: amount as usize,
+                amount: 3,
             }),
             "EAT_ALL_SOUPS" => Some(Trigger::EatAll {
                 items: self.items.clone(),
@@ -720,24 +805,45 @@ impl GoalDef {
             }),
             "SHOOT_OPPONENT_WITH_ARROW" => Some(Trigger::ShootOpponentWithArrow),
             "PICK_UP_OPPONENT_ITEM" => Some(Trigger::PickUpOpponentItem),
-            "DIE_5_UNIQUE_WAYS" => Some(Trigger::DieUniqueWays {
-                amount: amount as usize,
+            "DIE_5_UNIQUE_WAYS" => Some(Trigger::DieUniqueWays { amount: 5 }),
+            "DIE_BY_FALLING_OFF_VINE" => Some(Trigger::DieFalling {
+                keys: ["vines", "twisting_vines", "weeping_vines"]
+                    .map(|v| format!("death.fell.accident.{v}"))
+                    .to_vec(),
             }),
-            "DIE_BY_FALLING_OFF_VINE" => Some(Trigger::DieByMessage {
-                key: "death.fell.accident.vines".into(),
-            }),
+            "DIE_BY_TNT_MINECART" => Some(Trigger::DieToTntMinecart),
             "BREAK_ANY_ARMOR" => Some(Trigger::BreakItem {
                 matcher: ItemMatch::Armor,
             }),
             "BREAK_ANY_TOOL" => Some(Trigger::BreakItem {
                 matcher: ItemMatch::Tool,
             }),
-            "PLACE_HANGING_SIGN" => Some(Trigger::PlaceBlockSuffix {
-                suffix: "_hanging_sign".into(),
+            "PLACE_HANGING_SIGN" => Some(Trigger::PlaceItem {
+                matcher: ItemMatch::HangingSign,
             }),
-            "PLACE_PAINTING" => Some(Trigger::PlaceHanging {
-                kind: "minecraft:painting".into(),
+            "PLACE_PAINTING" => Some(Trigger::PlaceItem {
+                matcher: ItemMatch::Any(vec!["minecraft:painting".into()]),
             }),
+            "NAME_GHAST_DINNERBONE" | "NAME_IRON_GOLEM_DINNERBONE" => self.entities.first().map(|e| Trigger::Name {
+                entity: e.clone(),
+                names: vec!["Dinnerbone".into(), "Grumm".into()],
+            }),
+            "NAME_SHEEP_JEB" => self.entities.first().map(|e| Trigger::Name {
+                entity: e.clone(),
+                names: vec!["jeb_".into()],
+            }),
+            "OPPONENT_OBTAINS_CRAFTING_TABLE" => Some(Trigger::Opponent(OpponentEvent::Obtains(
+                "minecraft:crafting_table".into(),
+                "Crafting Table".into(),
+            ))),
+            "OPPONENT_OBTAINS_OBSIDIAN" => Some(Trigger::Opponent(OpponentEvent::Obtains(
+                "minecraft:obsidian".into(),
+                "Obsidian".into(),
+            ))),
+            "OPPONENT_OBTAINS_SEEDS" => Some(Trigger::Opponent(OpponentEvent::Obtains(
+                "minecraft:wheat_seeds".into(),
+                "Wheat Seeds".into(),
+            ))),
             "OPPONENT_DIES" => Some(Trigger::Opponent(OpponentEvent::Dies { times: 1 })),
             "OPPONENT_DIES_3_TIMES" => Some(Trigger::Opponent(OpponentEvent::Dies { times: 3 })),
             "OPPONENT_CATCHES_ON_FIRE" => Some(Trigger::Opponent(OpponentEvent::CatchesFire)),
@@ -747,6 +853,36 @@ impl GoalDef {
             "OPPONENT_TAKES_FALL_DAMAGE" => Some(Trigger::Opponent(OpponentEvent::FallDamage)),
             "OPPONENT_TOUCHES_WATER" => Some(Trigger::Opponent(OpponentEvent::TouchesWater)),
             "OPPONENT_EATS_FOOD" => Some(Trigger::Opponent(OpponentEvent::EatsFood)),
+            "FILL_ARMOR_STAND" => deed(Deed::FillArmorStand),
+            "PLACE_END_CRYSTAL" => deed(Deed::PlaceEndCrystal),
+            "EXPLODE_END_CRYSTAL" => deed(Deed::ExplodeEndCrystal),
+            "USE_GRINDSTONE" => deed(Deed::UseGrindstone),
+            "USE_SMITHING_TABLE" => deed(Deed::UseSmithingTable),
+            "USE_STONECUTTER" => deed(Deed::UseStonecutter),
+            "USE_LOOM" => deed(Deed::UseLoom),
+            "USE_ANVIL" => deed(Deed::UseAnvil),
+            "USE_CARTOGRAPHY_TABLE" => deed(Deed::UseCartographyTable),
+            "LOCK_MAP" => deed(Deed::LockMap),
+            "USE_COMPOSTER" => deed(Deed::UseComposter),
+            "USE_GLOW_INK" => deed(Deed::GlowInkCrimson),
+            "USE_GLOW_INK_WARPED" => deed(Deed::GlowInkWarped),
+            "USE_GLOW_INK_NETHER" => deed(Deed::GlowInkNether),
+            "FILL_CAMPFIRE" => deed(Deed::FillCampfire),
+            "FILL_CHISELED_BOOKSHELF" => deed(Deed::FillChiseledBookshelf),
+            "USE_BRUSH_ON_SUSPICIOUS_BLOCK" => deed(Deed::Brush),
+            "SHOOT_FIREWORK_FROM_CROSSBOW" => deed(Deed::ShootFireworkFromCrossbow),
+            "LIGHT_CANDLE" => deed(Deed::LightCandle),
+            "FILL_BUNDLE_WITH_BUNDLES" => deed(Deed::FillBundleWithBundles),
+            "CONSTRUCT_COPPER_GOLEM" => deed(Deed::ConstructCopperGolem),
+            "DUPLICATE_ALLAY" => deed(Deed::DuplicateAllay),
+            "USE_GOLDEN_DANDELION" => deed(Deed::GoldenDandelion),
+            "FILL_DECORATED_POT" => deed(Deed::FillDecoratedPot),
+            "PEARL_THROUGH_NETHER_PORTAL" => deed(Deed::PearlThroughPortal),
+            "LOOT_ABANDONED_CAMP" => deed(Deed::LootAbandonedCamp),
+            "TOOT_GOAT_HORN" => deed(Deed::TootGoatHorn),
+            "HAVE_YOUR_SHIELD_DISABLED" => deed(Deed::ShieldDisabled),
+            "ITEM_FRAME_IN_ITEM_FRAME" => deed(Deed::ItemFrameInItemFrame),
+            "PUT_WOLF_ARMOR_ON_WOLF" => deed(Deed::WolfArmor),
             _ => None,
         };
         if let Some(t) = special {
@@ -754,7 +890,7 @@ impl GoalDef {
         }
         let entities = self.entities.clone();
         match self.kind.as_str() {
-            "ObtainAllItemsGoal" if !self.items.is_empty() => Trigger::ObtainAll {
+            "ObtainAllItemsGoal" | "OpponentObtainsItemGoal" if !self.items.is_empty() => Trigger::ObtainAll {
                 items: self.items.clone(),
                 amount,
             },
@@ -762,7 +898,7 @@ impl GoalDef {
                 items: self.items.clone(),
                 amount,
             },
-            "ObtainPotionItemGoal" => Trigger::ObtainPotion {
+            "ObtainPotionItemGoal" => Trigger::Brewed {
                 potions: self.list("potions"),
             },
             "WearArmorGoal" => Trigger::WearAll {
@@ -781,10 +917,7 @@ impl GoalDef {
                 entities,
                 color: None,
                 dimension: None,
-            },
-            "KillSpecificMobsGoal" => Trigger::KillCount {
-                entities: Some(entities),
-                amount,
+                damage_type: None,
             },
             "KillAllSpecificMobsGoal" => Trigger::KillAll { entities },
             "KillUniqueHostileMobsGoal" => Trigger::KillUniqueHostile {
@@ -811,6 +944,9 @@ impl GoalDef {
             "EatUniqueFoodsGoal" => Trigger::EatUnique {
                 amount: amount as usize,
             },
+            "CompostUniqueFoodsGoal" => Trigger::CompostUnique {
+                amount: amount as usize,
+            },
             "IncrementStatGoal" => Trigger::Stat {
                 stats: self.list("stats"),
             },
@@ -833,29 +969,21 @@ impl GoalDef {
                 amount: amount as usize,
             },
             "RideEntityGoal" => Trigger::Ride { entities },
-            "NameEntityGoal" => match (entities.first(), quoted_name(&self.name)) {
-                (Some(e), Some(n)) => Trigger::Name {
-                    entity: e.clone(),
-                    name: n,
-                },
-                _ => Trigger::Unsupported,
-            },
             "BreakItemGoal" => Trigger::BreakItem {
                 matcher: ItemMatch::Any(self.items.clone()),
             },
-            "OpponentObtainsItemGoal" => self.items.first().map_or(Trigger::Unsupported, |i| {
-                Trigger::Opponent(OpponentEvent::Obtains(i.clone()))
-            }),
+            "SpyMobGoal" => entities
+                .first()
+                .map_or(Trigger::Unsupported, |e| Trigger::Spy { entity: e.clone() }),
+            "SpyUniqueMobsGoal" => Trigger::SpyUnique {
+                amount: amount as usize,
+            },
+            "LeashUniqueMobsGoal" => Trigger::LeashUnique {
+                amount: amount as usize,
+            },
             _ => Trigger::Unsupported,
         }
     }
-}
-
-/// `Dinnerbone` from `Name a Ghast 'Dinnerbone'`.
-fn quoted_name(name: &str) -> Option<String> {
-    let start = name.find('\'')? + 1;
-    let end = start + name[start..].find('\'')?;
-    Some(name[start..end].to_owned())
 }
 
 /// A dye's colour on leather (`DyeColor.getTextureDiffuseColor`, the Java mod's
@@ -1096,7 +1224,7 @@ mod tests {
             t.get("NAME_SHEEP_JEB").unwrap().trigger(DATA_NONE),
             Trigger::Name {
                 entity: "minecraft:sheep".into(),
-                name: "jeb_".into()
+                names: vec!["jeb_".into()]
             }
         );
         assert!(matches!(
@@ -1106,13 +1234,13 @@ mod tests {
     }
 
     #[test]
-    fn most_goals_are_supported() {
+    fn every_goal_is_supported() {
         let t = table();
         let supported = t
             .goals
             .iter()
             .filter(|g| g.trigger(g.sample_data()) != Trigger::Unsupported)
             .count();
-        assert_eq!(supported, 299, "of {}", t.goals.len());
+        assert_eq!(supported, t.goals.len(), "every goal is tracked");
     }
 }

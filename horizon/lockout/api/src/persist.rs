@@ -2,14 +2,15 @@
 //! every 30 seconds and when the server stops, and restored when it starts again.
 //!
 //! The file has the Java mod's layout (`version`, `ticks`, `started`, `teams` with colour,
-//! points and players, `goals` with id, data and `completedBy`), so a world keeps its match
-//! when it moves between a Fabric and a Horizon server. The Java mod's own goal trackers are
-//! Java field dumps this port can't read; its progress is kept under `horizon` instead, and
-//! each side starts the other's counters from zero.
-use crate::server::{Match, Progress, Team};
+//! points and players, `goals` with id, data and `completedBy`, and `trackers`: `Lockout`'s
+//! progress fields as `MatchPersistence` writes them, maps as `[key, value]` pairs, teams by
+//! index, UUIDs as strings), so a world keeps its match, progress included, when it moves
+//! between a Fabric and a Horizon server.
+use crate::rules::Trackers;
+use crate::server::{Match, Team};
 use crate::wire::TEAM_COLORS;
 use horizon_client::mod_api::serde_json::{self, Value, json};
-use std::collections::BTreeSet;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 pub const FILE_NAME: &str = "lockout-match.json";
@@ -54,20 +55,129 @@ pub fn to_json(m: &Match) -> Value {
         .iter()
         .map(|s| json!({"id": s.id, "data": s.data, "completedBy": s.completed_by.map_or(-1, |t| t as i64)}))
         .collect();
-    let progress: Vec<Value> = m
-        .progress
-        .iter()
-        .map(|((square, team), p)| json!({"square": square, "team": team, "seen": p.seen, "count": p.count}))
-        .collect();
     json!({
         "version": FORMAT_VERSION,
         "ticks": m.ticks,
         "started": m.started,
         "teams": teams,
         "goals": goals,
-        "trackers": {},
-        "horizon": {"progress": progress},
+        "trackers": trackers_to_json(&m.trackers),
     })
+}
+
+fn by_team<V: Clone + Into<Value>>(map: &HashMap<usize, V>) -> Value {
+    let mut pairs: Vec<(&usize, &V)> = map.iter().collect();
+    pairs.sort_by_key(|(k, _)| **k);
+    Value::Array(pairs.into_iter().map(|(k, v)| json!([k, v.clone().into()])).collect())
+}
+
+fn by_player<V: Clone + Into<Value>>(pairs: impl IntoIterator<Item = (u128, V)>) -> Value {
+    Value::Array(
+        pairs
+            .into_iter()
+            .map(|(k, v)| json!([uuid_string(k), v.into()]))
+            .collect(),
+    )
+}
+
+pub fn trackers_to_json(t: &Trackers) -> Value {
+    let uuid = |u: Option<u128>| u.map_or(Value::Null, |u| Value::String(uuid_string(u)));
+    json!({
+        "bredAnimalTypes": by_team(&t.bred_animal_types),
+        "killedHostileTypes": by_team(&t.killed_hostile_types),
+        "killedRaidMobs": by_team(&t.killed_raid_mobs),
+        "killedUndeadMobs": by_team(&t.killed_undead_mobs),
+        "killedArthropods": by_team(&t.killed_arthropods),
+        "foodTypesEaten": by_team(&t.food_types_eaten),
+        "uniqueItemsCraftedByTeam": by_team(&t.unique_items_crafted_by_team),
+        "compostedFoods": by_team(&t.composted_foods),
+        "spiedMobs": by_team(&t.spied_mobs),
+        "iceTypesMined": by_team(&t.ice_types_mined),
+        "biomesVisited": by_team(&t.biomes_visited),
+        "deathTypes": by_team(&t.death_types),
+        "uniqueAdvancements": by_team(&t.unique_advancements),
+        "damageTaken": by_team(&t.damage_taken),
+        "damageDealt": by_team(&t.damage_dealt),
+        "deaths": by_team(&t.deaths),
+        "mobsKilled": by_team(&t.mobs_killed),
+        "pumpkinWearTime": by_player(t.pumpkin_wear_time.iter().map(|(k, v)| (*k, *v))),
+        "distanceSprinted": by_player(t.distance_sprinted.iter().map(|(k, v)| (*k, *v))),
+        "uniqueCrafts": by_player(t.unique_crafts.iter().map(|(k, v)| (*k, v.clone()))),
+        "mostUniqueCraftsPlayer": uuid(t.most_unique_crafts_player),
+        "mostUniqueCrafts": t.most_unique_crafts,
+        "levels": by_player(t.levels.iter().copied()),
+        "mostLevelsPlayer": uuid(t.most_levels_player),
+    })
+}
+
+/// A saved field's `[key, value]` pairs.
+fn pairs<'a>(v: &'a Value, field: &str) -> impl Iterator<Item = (&'a Value, &'a Value)> {
+    v.get(field)
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|p| Some((p.get(0)?, p.get(1)?)))
+}
+
+fn strings(v: &Value) -> Vec<String> {
+    v.as_array()
+        .map(|a| a.iter().filter_map(Value::as_str).map(str::to_owned).collect())
+        .unwrap_or_default()
+}
+
+pub fn trackers_from_json(v: &Value, teams: usize) -> Trackers {
+    let team = |k: &Value| k.as_u64().map(|t| t as usize).filter(|t| *t < teams);
+    let sets = |field: &str| -> HashMap<usize, Vec<String>> {
+        pairs(v, field)
+            .filter_map(|(k, v)| Some((team(k)?, strings(v))))
+            .collect()
+    };
+    let ints = |field: &str| -> HashMap<usize, i32> {
+        pairs(v, field)
+            .filter_map(|(k, v)| Some((team(k)?, v.as_i64()? as i32)))
+            .collect()
+    };
+    let doubles = |field: &str| -> HashMap<usize, f64> {
+        pairs(v, field)
+            .filter_map(|(k, v)| Some((team(k)?, v.as_f64()?)))
+            .collect()
+    };
+    let player = |k: &Value| k.as_str().and_then(parse_uuid);
+    let uuid = |field: &str| v.get(field).and_then(Value::as_str).and_then(parse_uuid);
+    Trackers {
+        bred_animal_types: sets("bredAnimalTypes"),
+        killed_hostile_types: sets("killedHostileTypes"),
+        killed_raid_mobs: sets("killedRaidMobs"),
+        killed_undead_mobs: ints("killedUndeadMobs"),
+        killed_arthropods: ints("killedArthropods"),
+        food_types_eaten: sets("foodTypesEaten"),
+        unique_items_crafted_by_team: sets("uniqueItemsCraftedByTeam"),
+        composted_foods: sets("compostedFoods"),
+        spied_mobs: sets("spiedMobs"),
+        ice_types_mined: sets("iceTypesMined"),
+        biomes_visited: sets("biomesVisited"),
+        death_types: sets("deathTypes"),
+        unique_advancements: sets("uniqueAdvancements"),
+        damage_taken: doubles("damageTaken"),
+        damage_dealt: doubles("damageDealt"),
+        deaths: ints("deaths"),
+        mobs_killed: ints("mobsKilled"),
+        pumpkin_wear_time: pairs(v, "pumpkinWearTime")
+            .filter_map(|(k, v)| Some((player(k)?, v.as_i64()?)))
+            .collect(),
+        distance_sprinted: pairs(v, "distanceSprinted")
+            .filter_map(|(k, v)| Some((player(k)?, v.as_i64()? as i32)))
+            .collect(),
+        unique_crafts: pairs(v, "uniqueCrafts")
+            .filter_map(|(k, v)| Some((player(k)?, strings(v))))
+            .collect(),
+        most_unique_crafts_player: uuid("mostUniqueCraftsPlayer"),
+        most_unique_crafts: v.get("mostUniqueCrafts").and_then(Value::as_i64).unwrap_or(0) as i32,
+        levels: pairs(v, "levels")
+            .filter_map(|(k, v)| Some((player(k)?, v.as_i64()? as i32)))
+            .collect(),
+        most_levels_player: uuid("mostLevelsPlayer"),
+    }
 }
 
 pub fn from_json(v: &Value) -> Result<Match, String> {
@@ -115,26 +225,8 @@ pub fn from_json(v: &Value) -> Result<Match, String> {
             m.board[square].completed_by = Some(by as usize);
         }
     }
-    let progress = v
-        .pointer("/horizon/progress")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default();
-    for p in progress {
-        let (Some(square), Some(team)) = (
-            p.get("square").and_then(Value::as_u64),
-            p.get("team").and_then(Value::as_u64),
-        ) else {
-            continue;
-        };
-        let seen: BTreeSet<String> = p
-            .get("seen")
-            .and_then(Value::as_array)
-            .map(|a| a.iter().filter_map(Value::as_str).map(str::to_owned).collect())
-            .unwrap_or_default();
-        let count = p.get("count").and_then(Value::as_f64).unwrap_or(0.0);
-        m.progress
-            .insert((square as usize, team as usize), Progress { seen, count });
+    if let Some(trackers) = v.get("trackers") {
+        m.trackers = trackers_from_json(trackers, m.teams.len());
     }
     // Restored matches wait for every player (`MatchPause`).
     m.started = false;
@@ -195,29 +287,30 @@ mod tests {
         m.started = true;
         m.board[1].completed_by = Some(1);
         m.teams[1].points = 1;
-        m.progress.insert(
-            (0, 0),
-            Progress {
-                seen: ["minecraft:zombie".to_string()].into(),
-                count: 2.5,
-            },
-        );
+        m.trackers
+            .killed_hostile_types
+            .insert(0, vec!["minecraft:zombie".into()]);
+        m.trackers.damage_taken.insert(1, 2.5);
+        m.trackers.levels = vec![(2, 7), (1, 3)];
+        m.trackers.most_levels_player = Some(2);
         let back = from_json(&to_json(&m)).unwrap();
         assert_eq!(back.ticks, 4321);
         assert!(!back.started, "restored matches start paused");
         assert_eq!(back.board[1].completed_by, Some(1));
         assert_eq!(back.teams[1].points, 1);
         assert_eq!(back.teams[0].players, vec![(1, "Alex".to_string())]);
-        assert_eq!(back.progress[&(0, 0)].count, 2.5);
-        // A file the Fabric mod wrote: Java tracker fields, no Horizon progress.
+        assert_eq!(back.trackers, m.trackers);
+        // A file the Fabric mod wrote.
         let java = json!({
             "version": 1, "ticks": 100, "started": true,
             "teams": [{"color": "red", "points": 0, "players": [{"uuid": "00000000-0000-0000-0000-000000000001", "name": "Alex"}]}],
             "goals": [{"id": "ENTER_END", "data": "null", "completedBy": -1}],
-            "trackers": {"mobsKilled": [[0, 3]]}
+            "trackers": {"mobsKilled": [[0, 3]], "foodTypesEaten": [[0, ["minecraft:apple"]]], "mostLevelsPlayer": null}
         });
         let m = from_json(&java).unwrap();
         assert_eq!(m.teams[0].players[0].0, 1);
         assert_eq!(m.board[0].id, "ENTER_END");
+        assert_eq!(m.trackers.mobs_killed[&0], 3);
+        assert_eq!(m.trackers.food_types_eaten[&0], vec!["minecraft:apple".to_string()]);
     }
 }

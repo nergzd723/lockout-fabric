@@ -9,17 +9,20 @@ pub mod client;
 pub mod compass;
 pub mod draft;
 pub mod goals;
+pub mod names;
 pub mod pause;
 pub mod persist;
+pub mod rules;
 pub mod screens;
 pub mod server;
 pub mod wire;
 
+use goals::{Deed, Trigger};
 use horizon_client::mod_api::*;
 use server::{Action, Event, Online, Span, State};
 use std::collections::{HashMap, HashSet};
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use wire::Payload;
 
 pub fn hooks() -> Box<dyn Hooks> {
@@ -60,6 +63,31 @@ struct Lockout {
     /// Biomes and structures still to locate, one a tick.
     to_locate: Mutex<Vec<(bool, String)>>,
     pending: Mutex<Option<Request>>,
+    /// The server's tick count, for the hooks that can't lock the state.
+    now: AtomicI64,
+    /// A match is running, and (`immune`) hasn't started: no player can be hurt.
+    live: AtomicBool,
+    immune: AtomicBool,
+    /// Hits heard, waiting for `living_damage_post` to say they landed.
+    hits: Mutex<HashMap<u32, Hit>>,
+    /// Who last hurt each entity.
+    credit: Mutex<HashMap<u32, Credit>>,
+    /// Entity ids of players holding up a shield.
+    blocking: Mutex<HashSet<i32>>,
+    /// Each player's effects last tick.
+    effects: Mutex<HashMap<u128, Vec<String>>>,
+    /// The menu each player has open.
+    menus: Mutex<HashMap<u128, OpenMenu>>,
+    takes: Mutex<Vec<Take>>,
+    checks: Mutex<Vec<Check>>,
+    /// End crystals a player hit, and when.
+    crystals: Mutex<HashMap<u32, (u128, i64)>>,
+    /// Players an ender pearl teleported, and when.
+    pearls: Mutex<HashMap<u128, i64>>,
+    /// Dying players' drops about to join the level: dimension, where, whose, when.
+    death_drops: Mutex<Vec<DeathDrop>>,
+    /// Item entities a player dropped as they died, and whose they were.
+    dropped: Mutex<HashMap<u32, u128>>,
 }
 
 #[derive(Default, Clone)]
@@ -68,6 +96,7 @@ struct PendingDeath {
     killer_kind: Option<String>,
     killer_player: Option<u128>,
     message_key: Option<String>,
+    direct_kind: Option<String>,
 }
 
 /// A start or a draft someone asked for. Vanilla teams are read with `/team list`, which only
@@ -125,6 +154,7 @@ fn roster(players: &[NativeServerPlayer]) -> Vec<Online> {
             dimension: p.dimension.clone(),
             position: p.position,
             xp_level: p.xp_level,
+            dead: p.health <= 0.0,
         })
         .collect()
 }
@@ -178,6 +208,13 @@ fn stack_view(stack: &ItemStack) -> server::Held {
         count: stack.count,
         potion: extra.and_then(|e| e.potion.as_deref().map(str::to_owned)),
         dyed: extra.and_then(|e| e.dyed_color),
+        enchanted: extra.is_some_and(|e| !e.enchantments.is_empty()),
+        base_color: extra.is_some_and(|e| e.base_color.is_some()),
+        bundle: stack.item.ends_with("bundle").then(|| {
+            extra
+                .map(|e| e.bundle_contents.iter().map(|s| s.item.to_string()).collect())
+                .unwrap_or_default()
+        }),
     }
 }
 
@@ -249,10 +286,11 @@ impl Lockout {
                 Action::Sound {
                     player,
                     sound,
+                    category,
                     volume,
                     pitch,
                 } => {
-                    host.play_sound_to(player, sound, "master", None, volume, pitch);
+                    host.play_sound_to(player, sound, category, None, volume, pitch);
                 }
                 Action::Teleport { player, dimension, pos } => {
                     let (yaw, pitch) = all
@@ -348,21 +386,6 @@ impl Lockout {
                         .and_then(|p| host.entity(p.entity_id as u32))
                     {
                         host.entity_set_fire(e, 0);
-                    }
-                }
-                Action::SnapshotSprint => {
-                    let base: HashMap<u128, i32> = all
-                        .iter()
-                        .map(|p| {
-                            (
-                                p.uuid,
-                                host.player_stat(p.uuid, "minecraft:custom", "minecraft:sprint_one_cm")
-                                    .unwrap_or(0),
-                            )
-                        })
-                        .collect();
-                    if let Ok(mut s) = self.server.lock() {
-                        s.sprint_base = base;
                     }
                 }
             }
@@ -711,6 +734,7 @@ impl Lockout {
                     killer_kind: d.killer_kind,
                     killer_player: d.killer_player,
                     message_key: d.message_key,
+                    direct_kind: d.direct_kind,
                 },
             );
         }
@@ -730,17 +754,68 @@ impl Lockout {
                 .map(|p| (p.entity_id, p.uuid))
                 .collect();
         }
+        if let Ok(mut b) = self.blocking.lock() {
+            *b = players.iter().filter(|p| p.blocking).map(|p| p.entity_id).collect();
+        }
+        let (live, polled) = self.server.try_lock().map_or((false, false), |s| {
+            let live = s.game.as_ref().is_some_and(|m| m.running);
+            (live, live && s.pause.is_none())
+        });
+        // Last tick's clicks, then `EndServerTickEventHandler`'s goal loop.
+        self.run_checks(host, &players);
+        if polled {
+            self.poll(host, &players);
+        } else if let Ok(mut e) = self.effects.lock() {
+            e.clear();
+        }
         let list = roster(&players);
         let scouts = self.scouts(host, &players);
-        let actions = match self.server.lock() {
+        let (actions, now, ticks) = match self.server.lock() {
             Ok(mut s) => {
-                let now = s.server_ticks;
-                s.last_hurt_by.retain(|_, (_, t)| now - *t < 200);
-                s.tick(&list, &scouts)
+                let actions = s.tick(&list, &scouts);
+                let ticks = s.game.as_ref().map(|m| m.ticks);
+                (actions, s.server_ticks, ticks)
             }
             Err(_) => return,
         };
+        self.now.store(now, Ordering::Relaxed);
+        let (running, started) = self
+            .server
+            .try_lock()
+            .map(|s| {
+                let m = s.game.as_ref().filter(|m| m.running);
+                (m.is_some(), m.is_some_and(|m| m.started))
+            })
+            .unwrap_or((live, false));
+        self.live.store(running, Ordering::Relaxed);
+        self.immune.store(running && !started, Ordering::Relaxed);
+        if let Ok(mut c) = self.credit.lock() {
+            c.retain(|_, c| {
+                [c.player.map(|p| p.1), c.mob.map(|m| m.1)]
+                    .into_iter()
+                    .flatten()
+                    .any(|t| now - t <= 100)
+            });
+        }
+        if let Ok(mut h) = self.hits.lock() {
+            h.clear();
+        }
+        if let Ok(mut c) = self.crystals.lock() {
+            c.retain(|_, (_, t)| now - *t <= 2);
+        }
+        if let Ok(mut p) = self.pearls.lock() {
+            p.retain(|_, t| now - *t <= 2);
+        }
+        if let Ok(mut d) = self.death_drops.lock() {
+            d.retain(|(_, _, _, t)| now - *t <= 1);
+        }
+        if !running && let Ok(mut d) = self.dropped.lock() {
+            d.clear();
+        }
         self.apply(host, actions, true);
+        if running && ticks.is_some_and(|t| t % 20 == 0) {
+            self.scan_leashes(host, &players);
+        }
     }
 
     /// The drafting players' positions and jump keys, for scouting.
@@ -929,8 +1004,7 @@ impl Lockout {
                 }
                 return;
             };
-            actions.extend(s.start(teams, board, &list, &HashMap::new()));
-            actions.push(Action::SnapshotSprint);
+            actions.extend(s.start(teams, board, &list));
             actions
         };
         self.apply(host, actions, true);
@@ -1032,8 +1106,750 @@ fn plain_of(v: &serde_json::Value) -> String {
     }
 }
 
+/// A dying player's drops: the dimension, where they leave, whose, and when.
+type DeathDrop = (String, [f64; 3], u128, i64);
+
+/// A hit `living_incoming_damage_v3` heard, waiting for `living_damage_post` to say it landed.
+#[derive(Debug, Clone)]
+struct Hit {
+    /// The victim's UUID when it is a player.
+    victim: Option<u128>,
+    attacker: Option<u128>,
+    attacker_entity: Option<u32>,
+    direct: Option<u32>,
+    damage_type: String,
+    amount: f64,
+}
+
+/// Who last hurt an entity, and when (server ticks): `LivingEntity.lastHurtByPlayer`, the
+/// mob that did (a tamed wolf credits its owner), and the hit's direct entity.
+#[derive(Debug, Clone, Copy, Default)]
+struct Credit {
+    player: Option<(u128, i64)>,
+    mob: Option<(u32, i64)>,
+    direct: Option<(u32, i64)>,
+}
+
+/// The menu a player has open, and (a cartography table's) what sits in its extra slot.
+#[derive(Debug, Clone)]
+struct OpenMenu {
+    kind: String,
+    extra: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum Taken {
+    /// A brewing stand's bottle.
+    Potion,
+    Map {
+        locked: bool,
+    },
+    Deed(Deed),
+}
+
+/// A click on a station's result, checked on the next tick.
+#[derive(Debug, Clone)]
+struct Take {
+    player: u128,
+    taken: Taken,
+    thrown: bool,
+    before: HashMap<(String, Option<String>), u32>,
+}
+
+#[derive(Debug, Clone)]
+enum BlockCheck {
+    Composter { item: String, food: bool, level: i32 },
+    Campfire,
+    Bookshelf,
+    Pot,
+    Sign { crimson: bool },
+    Loot,
+}
+
+/// What a block held before a click.
+#[derive(Debug, Clone, PartialEq)]
+enum BlockState {
+    None,
+    Level(i32),
+    /// Items in it, and (a pot) the most its stack holds.
+    Count(u32, u32),
+    /// A sign's glowing sides.
+    Glowing(bool, bool),
+    Loot(String),
+}
+
+/// Something to look at on the next tick, once a click has done what it does.
+#[derive(Debug, Clone)]
+enum Check {
+    ArmorStand {
+        player: u128,
+        stand: u32,
+    },
+    Wolf {
+        player: u128,
+        wolf: u32,
+    },
+    Allay {
+        player: u128,
+        allay: u32,
+        cooldown: i64,
+    },
+    Block {
+        player: u128,
+        dimension: String,
+        pos: [i32; 3],
+        kind: BlockCheck,
+        before: BlockState,
+    },
+}
+
+const ABANDONED_CAMP_LOOT: [&str; 3] = [
+    "minecraft:barrels/abandoned_camp_barrel",
+    "minecraft:chests/abandoned_camp_common_chest",
+    "minecraft:chests/abandoned_camp_secret_chest",
+];
+
+fn portal_crossing(from: &str, to: &str) -> bool {
+    let pair = ["minecraft:overworld", "minecraft:the_nether"];
+    from != to && pair.contains(&from) && pair.contains(&to)
+}
+
+fn tag_str(t: &Tag) -> Option<String> {
+    match t {
+        Tag::String(s) => Some(String::from_utf16_lossy(&s.0)),
+        _ => None,
+    }
+}
+
+fn tag_int(t: &Tag) -> Option<i64> {
+    match t {
+        Tag::Byte(v) => Some(*v as i64),
+        Tag::Short(v) => Some(*v as i64),
+        Tag::Int(v) => Some(*v as i64),
+        Tag::Long(v) => Some(*v),
+        _ => None,
+    }
+}
+
+/// `[I; a, b, c, d]` as `UUIDUtil` writes one.
+fn tag_uuid(t: &Tag) -> Option<u128> {
+    match t {
+        Tag::IntArray(v) if v.len() == 4 => {
+            Some(v.iter().fold(0u128, |acc, part| (acc << 32) | (*part as u32 as u128)))
+        }
+        Tag::String(_) => tag_str(t).and_then(|s| persist::parse_uuid(&s)),
+        _ => None,
+    }
+}
+
+fn entity_tag(host: &mut dyn Host, dimension: &str, id: u32) -> Option<Tag> {
+    host.entity_nbt_in(dimension, id).map(Tag::Compound)
+}
+
+/// A tamed animal's owner (`TamableAnimal.getOwner`), for a kill its wolf made.
+fn tamed_owner(host: &mut dyn Host, players: &[NativeServerPlayer], id: u32) -> Option<u128> {
+    let tag = match host.entity(id) {
+        Some(e) => host.entity_nbt(e).map(Tag::Compound),
+        None => None,
+    }
+    .or_else(|| {
+        ["minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"]
+            .iter()
+            .find_map(|d| entity_tag(host, d, id))
+    })?;
+    let owner = tag.get("Owner").and_then(tag_uuid)?;
+    players.iter().any(|p| p.uuid == owner).then_some(owner)
+}
+
+fn wolf_armored(host: &dyn Host, wolf: u32) -> bool {
+    host.entity(wolf)
+        .and_then(|e| host.living(e))
+        .and_then(|l| host.living_equipment(l, EquipmentSlot::Body))
+        .is_some_and(|s| &*s.item == "minecraft:wolf_armor")
+}
+
+fn allay_cooldown(host: &mut dyn Host, dimension: &str, allay: u32) -> i64 {
+    entity_tag(host, dimension, allay)
+        .and_then(|t| t.get("DuplicationCooldown").and_then(tag_int))
+        .unwrap_or(0)
+}
+
+/// Item counts by (item, potion), for telling what a click took.
+fn carried(inventory: &[Option<ItemStack>], cursor: Option<&ItemStack>) -> HashMap<(String, Option<String>), u32> {
+    let mut out = HashMap::new();
+    for s in inventory.iter().flatten().chain(cursor) {
+        *out.entry(potion_key(s)).or_default() += s.count;
+    }
+    out
+}
+
+fn potion_key(s: &ItemStack) -> (String, Option<String>) {
+    let held = stack_view(s);
+    (held.item, held.potion)
+}
+
+/// What a block holds now, for a click's before and after.
+fn block_state(host: &mut dyn Host, dimension: &str, pos: [i32; 3], kind: &BlockCheck) -> BlockState {
+    let tag = host.block_entity_tag(dimension, pos);
+    let items = |t: &Tag| match t.get("Items") {
+        Some(Tag::List(l)) => l.len() as u32,
+        _ => 0,
+    };
+    match kind {
+        BlockCheck::Composter { .. } => BlockState::None,
+        BlockCheck::Campfire | BlockCheck::Bookshelf => {
+            tag.map_or(BlockState::None, |t| BlockState::Count(items(&t), 0))
+        }
+        BlockCheck::Pot => {
+            let Some(item) = tag.as_ref().and_then(|t| t.get("item").cloned()) else {
+                return BlockState::Count(0, 0);
+            };
+            let id = item.get("id").and_then(tag_str).unwrap_or_default();
+            let count = item.get("count").and_then(tag_int).unwrap_or(1) as u32;
+            let max = match host.component(&ItemStack::new(&id, 1), "minecraft:max_stack_size") {
+                Ok(Some(t)) => tag_int(t).unwrap_or(64) as u32,
+                _ => 64,
+            };
+            BlockState::Count(count, max)
+        }
+        BlockCheck::Sign { .. } => tag.map_or(BlockState::None, |t| {
+            let glowing = |side: &str| {
+                t.get(side)
+                    .and_then(|s| s.get("has_glowing_text"))
+                    .and_then(tag_int)
+                    .is_some_and(|v| v != 0)
+            };
+            BlockState::Glowing(glowing("front_text"), glowing("back_text"))
+        }),
+        BlockCheck::Loot => tag
+            .and_then(|t| t.get("LootTable").and_then(tag_str))
+            .filter(|l| ABANDONED_CAMP_LOOT.contains(&l.as_str()))
+            .map_or(BlockState::None, BlockState::Loot),
+    }
+}
+
+/// A block that stops a look (`ClipContext.Block.COLLIDER`): anything with a collision box.
+fn blocks_sight(block: &str) -> bool {
+    let path = block.trim_start_matches("minecraft:");
+    const OPEN: &[&str] = &[
+        "air",
+        "water",
+        "lava",
+        "bubble_column",
+        "short_grass",
+        "tall_grass",
+        "fern",
+        "large_fern",
+        "dead_bush",
+        "seagrass",
+        "tall_seagrass",
+        "kelp",
+        "kelp_plant",
+        "sugar_cane",
+        "vine",
+        "glow_lichen",
+        "sculk_vein",
+        "cobweb",
+        "fire",
+        "soul_fire",
+        "light",
+        "structure_void",
+        "redstone_wire",
+        "tripwire",
+        "lever",
+        "wheat",
+        "carrots",
+        "potatoes",
+        "beetroots",
+        "nether_wart",
+        "sweet_berry_bush",
+        "cave_vines",
+        "cave_vines_plant",
+        "twisting_vines",
+        "twisting_vines_plant",
+        "weeping_vines",
+        "weeping_vines_plant",
+        "hanging_roots",
+        "spore_blossom",
+        "pink_petals",
+        "leaf_litter",
+        "wildflowers",
+        "bush",
+        "firefly_bush",
+        "short_dry_grass",
+        "tall_dry_grass",
+        "nether_sprouts",
+        "warped_roots",
+        "crimson_roots",
+        "snow",
+        "string",
+    ];
+    !(OPEN.contains(&path)
+        || path.ends_with("_air")
+        || path.ends_with("torch")
+        || path.ends_with("_sign")
+        || path.ends_with("_banner")
+        || path.ends_with("_button")
+        || path.ends_with("_pressure_plate")
+        || path.ends_with("rail")
+        || path.ends_with("_sapling")
+        || path.ends_with("_tulip")
+        || path.ends_with("_mushroom")
+        || path.ends_with("_fungus")
+        || path.ends_with("_coral")
+        || path.ends_with("_coral_fan")
+        || [
+            "dandelion",
+            "poppy",
+            "blue_orchid",
+            "allium",
+            "azure_bluet",
+            "oxeye_daisy",
+            "cornflower",
+            "lily_of_the_valley",
+            "wither_rose",
+            "torchflower",
+            "pitcher_plant",
+            "sunflower",
+            "lilac",
+            "rose_bush",
+            "peony",
+            "open_eyeblossom",
+            "closed_eyeblossom",
+            "golden_dandelion",
+        ]
+        .contains(&path))
+}
+
+/// The slab test: where along `from + t * (to - from)`, t in 0..=1, the ray enters `aabb`.
+fn ray_hits(from: [f64; 3], to: [f64; 3], aabb: [[f64; 3]; 2]) -> Option<f64> {
+    if (0..3).all(|i| from[i] >= aabb[0][i] && from[i] <= aabb[1][i]) {
+        return Some(0.0);
+    }
+    let (mut near, mut far) = (0.0f64, 1.0f64);
+    for i in 0..3 {
+        let d = to[i] - from[i];
+        if d.abs() < 1e-9 {
+            if from[i] < aabb[0][i] || from[i] > aabb[1][i] {
+                return None;
+            }
+            continue;
+        }
+        let (mut t0, mut t1) = ((aabb[0][i] - from[i]) / d, (aabb[1][i] - from[i]) / d);
+        if t0 > t1 {
+            std::mem::swap(&mut t0, &mut t1);
+        }
+        near = near.max(t0);
+        far = far.min(t1);
+        if near > far {
+            return None;
+        }
+    }
+    Some(near)
+}
+
+/// The mob a player's spyglass is on (`UsingItemCriterionMixin`, the vanilla `looking_at`
+/// check): the nearest entity along the look within 100 blocks, when it is a mob in sight.
+fn spied_mob(host: &mut dyn Host, p: &NativeServerPlayer) -> Option<String> {
+    const RANGE: f64 = 100.0;
+    let (yaw, pitch) = (p.yaw.to_radians() as f64, p.pitch.to_radians() as f64);
+    let view = [-yaw.sin() * pitch.cos(), -pitch.sin(), yaw.cos() * pitch.cos()];
+    let eye = [p.position[0], p.position[1] + p.eye_height as f64, p.position[2]];
+    let end = [
+        eye[0] + view[0] * RANGE,
+        eye[1] + view[1] * RANGE,
+        eye[2] + view[2] * RANGE,
+    ];
+    let min = [0, 1, 2].map(|i| eye[i].min(end[i]) - 1.0);
+    let max = [0, 1, 2].map(|i| eye[i].max(end[i]) + 1.0);
+    let mut nearest: Option<(f64, u32)> = None;
+    for id in host.entities_in(&p.dimension, min, max) {
+        if id as i32 == p.entity_id {
+            continue;
+        }
+        let Some(e) = host.entity(id) else { continue };
+        let Some(aabb) = host.entity_bounding_box(e) else {
+            continue;
+        };
+        if let Some(t) = ray_hits(eye, end, aabb)
+            && nearest.is_none_or(|(n, _)| t < n)
+        {
+            nearest = Some((t, id));
+        }
+    }
+    let (_, id) = nearest?;
+    let e = host.entity(id)?;
+    let kind = host.entity_kind(e)?;
+    // `instanceof Mob`: living, and not a player, an armor stand or a mannequin.
+    if host.living(e).is_none()
+        || ["minecraft:player", "minecraft:armor_stand", "minecraft:mannequin"].contains(&kind.as_str())
+    {
+        return None;
+    }
+    let target = host.entity_eye_position(e)?;
+    let level = host.entity(p.entity_id as u32).and_then(|me| host.entity_level(me))?;
+    let distance = (0..3).map(|i| (target[i] - eye[i]).powi(2)).sum::<f64>().sqrt();
+    let steps = (distance / 0.2).ceil() as i32;
+    for s in 1..steps {
+        let f = s as f64 / steps as f64;
+        let at = [0, 1, 2].map(|i| (eye[i] + (target[i] - eye[i]) * f).floor() as i32);
+        if host.level_block(level, at).is_some_and(|b| blocks_sight(&b)) {
+            return None;
+        }
+    }
+    Some(kind)
+}
+
+/// Mobs leashed to `player` within 16 blocks (`EndServerTickEventHandler.checkLeashedMobs`).
+fn leashed_kinds(host: &mut dyn Host, p: &NativeServerPlayer) -> Vec<String> {
+    let min = [p.position[0] - 16.3, p.position[1] - 16.0, p.position[2] - 16.3];
+    let max = [p.position[0] + 16.3, p.position[1] + 17.8, p.position[2] + 16.3];
+    let mut kinds = Vec::new();
+    for id in host.entities_in(&p.dimension, min, max) {
+        let Some(tag) = entity_tag(host, &p.dimension, id) else {
+            continue;
+        };
+        let holder = tag.get("leash").and_then(|l| l.get("UUID")).and_then(tag_uuid);
+        if holder == Some(p.uuid)
+            && let Some(kind) = host.entity(id).and_then(|e| host.entity_kind(e))
+            && !kinds.contains(&kind)
+        {
+            kinds.push(kind);
+        }
+    }
+    kinds
+}
+
+impl Lockout {
+    fn did(&self, host: &mut dyn Host, player: u128, deed: Deed) {
+        self.event(host, Event::Did { player, deed });
+    }
+
+    fn hit_crystal(&self, crystal: u32, player: u128) {
+        if let Ok(mut c) = self.crystals.lock() {
+            c.insert(crystal, (player, self.now.load(Ordering::Relaxed)));
+        }
+    }
+
+    /// `LivingEntity.getKillCredit` as a player: whoever hurt it in the last 100 ticks, or
+    /// the owner of the tamed animal that did, if that came later.
+    fn kill_credit(&self, host: &mut dyn Host, players: &[NativeServerPlayer], entity: u32, now: i64) -> Option<u128> {
+        let credit = self.credit.lock().ok()?.get(&entity).copied()?;
+        let player = credit.player.filter(|(_, t)| now - t <= 100);
+        let pet = credit
+            .mob
+            .filter(|(_, t)| now - t <= 100)
+            .and_then(|(m, t)| tamed_owner(host, players, m).map(|o| (o, t)));
+        match (player, pet) {
+            (Some(p), Some(w)) => Some(if w.1 > p.1 { w.0 } else { p.0 }),
+            (p, w) => p.or(w).map(|(u, _)| u),
+        }
+    }
+
+    /// `EndServerTickEventHandler`'s per-player polling, and the effects each player gained
+    /// since last tick (`StatusEffectMixin`).
+    fn poll(&self, host: &mut dyn Host, players: &[NativeServerPlayer]) {
+        for p in players {
+            let mut stacks: Vec<Option<server::Held>> = host
+                .player_stacks(p.uuid)
+                .unwrap_or_default()
+                .iter()
+                .map(|s| s.as_ref().map(stack_view))
+                .collect();
+            stacks.resize(36, None);
+            for slot in [
+                EquipmentSlot::Feet,
+                EquipmentSlot::Legs,
+                EquipmentSlot::Chest,
+                EquipmentSlot::Head,
+                EquipmentSlot::OffHand,
+            ] {
+                stacks.push(host.player_equipment(p.uuid, slot).as_ref().map(stack_view));
+            }
+            stacks.push(host.menu_cursor(p.uuid).as_ref().map(stack_view));
+            let me = host.entity(p.entity_id as u32);
+            let level = me.and_then(|e| host.entity_level(e));
+            let feet = [
+                p.position[0].floor() as i32,
+                p.position[1].floor() as i32,
+                p.position[2].floor() as i32,
+            ];
+            let block = |host: &dyn Host, at: [i32; 3]| {
+                level
+                    .and_then(|l| host.level_block(l, at))
+                    .unwrap_or_else(|| "minecraft:air".into())
+            };
+            let inside = block(host, feet);
+            let below = block(host, [feet[0], feet[1] - 1, feet[2]]);
+            let vehicle = host.vehicle_of(p.entity_id as u32).and_then(|v| kind_of(host, v));
+            let food = host.player_food(p.uuid).map_or(20, |f| f.0);
+            let on_fire = me.and_then(|e| host.entity_fire_ticks(e)).is_some_and(|t| t > 0);
+            self.event(
+                host,
+                Event::Tick(Box::new(rules::Polled {
+                    player: p.uuid,
+                    name: p.name.clone(),
+                    stacks,
+                    selected: p.selected_slot as usize,
+                    dimension: p.dimension.clone(),
+                    y: p.position[1],
+                    inside,
+                    below,
+                    vehicle,
+                    food,
+                    on_fire,
+                })),
+            );
+            let now: Vec<String> = host
+                .effects(p.uuid)
+                .unwrap_or_default()
+                .into_iter()
+                .map(|e| e.id)
+                .collect();
+            let before = self.effects.lock().ok().and_then(|mut e| e.insert(p.uuid, now.clone()));
+            if let Some(before) = before {
+                for effect in now.iter().filter(|e| !before.contains(e)) {
+                    self.event(
+                        host,
+                        Event::EffectStarted {
+                            player: p.uuid,
+                            effect: effect.clone(),
+                            active: now.len(),
+                        },
+                    );
+                }
+            }
+        }
+    }
+
+    /// The clicks of last tick, now that they did what they do.
+    fn run_checks(&self, host: &mut dyn Host, players: &[NativeServerPlayer]) {
+        let checks = self
+            .checks
+            .lock()
+            .map(|mut c| std::mem::take(&mut *c))
+            .unwrap_or_default();
+        for check in checks {
+            match check {
+                Check::ArmorStand { player, stand } => {
+                    let full = host.entity(stand).and_then(|e| host.living(e)).is_some_and(|l| {
+                        [
+                            EquipmentSlot::Head,
+                            EquipmentSlot::Chest,
+                            EquipmentSlot::Legs,
+                            EquipmentSlot::Feet,
+                        ]
+                        .into_iter()
+                        .all(|s| host.living_equipment(l, s).is_some())
+                    });
+                    if full {
+                        self.did(host, player, Deed::FillArmorStand);
+                    }
+                }
+                Check::Wolf { player, wolf } => {
+                    if wolf_armored(host, wolf) {
+                        self.did(host, player, Deed::WolfArmor);
+                    }
+                }
+                Check::Allay {
+                    player,
+                    allay,
+                    cooldown,
+                } => {
+                    let dimension = players
+                        .iter()
+                        .find(|p| p.uuid == player)
+                        .map(|p| p.dimension.clone())
+                        .unwrap_or_default();
+                    if cooldown <= 0 && allay_cooldown(host, &dimension, allay) > 0 {
+                        self.did(host, player, Deed::DuplicateAllay);
+                    }
+                }
+                Check::Block {
+                    player,
+                    dimension,
+                    pos,
+                    kind,
+                    before,
+                } => {
+                    if let BlockCheck::Composter { item, food, level } = &kind {
+                        let now: i32 = host
+                            .entity(players.iter().find(|p| p.uuid == player).map_or(0, |p| p.entity_id) as u32)
+                            .and_then(|e| host.entity_level(e))
+                            .and_then(|l| host.level_block_property(l, pos, "level"))
+                            .and_then(|v| v.parse().ok())
+                            .unwrap_or(*level);
+                        if now > *level {
+                            self.event(
+                                host,
+                                Event::Composted {
+                                    player,
+                                    item: item.clone(),
+                                    food: *food,
+                                },
+                            );
+                        }
+                        continue;
+                    }
+                    let after = block_state(host, &dimension, pos, &kind);
+                    let deed = match (&kind, &before, &after) {
+                        (BlockCheck::Campfire, BlockState::Count(b, _), BlockState::Count(a, _))
+                            if a > b && *a >= 4 =>
+                        {
+                            Some(Deed::FillCampfire)
+                        }
+                        (BlockCheck::Bookshelf, BlockState::Count(b, _), BlockState::Count(a, _))
+                            if a > b && *a >= 6 =>
+                        {
+                            Some(Deed::FillChiseledBookshelf)
+                        }
+                        (BlockCheck::Pot, BlockState::Count(b, _), BlockState::Count(a, max)) if a > b && a >= max => {
+                            Some(Deed::FillDecoratedPot)
+                        }
+                        (BlockCheck::Sign { crimson }, BlockState::Glowing(f0, b0), BlockState::Glowing(f1, b1))
+                            if (*f1 && !*f0) || (*b1 && !*b0) =>
+                        {
+                            Some(if *crimson {
+                                Deed::GlowInkCrimson
+                            } else {
+                                Deed::GlowInkWarped
+                            })
+                        }
+                        (BlockCheck::Loot, BlockState::Loot(_), BlockState::None) => Some(Deed::LootAbandonedCamp),
+                        _ => None,
+                    };
+                    if let Some(deed) = deed {
+                        self.did(host, player, deed);
+                    }
+                }
+            }
+        }
+        let takes = self
+            .takes
+            .lock()
+            .map(|mut t| std::mem::take(&mut *t))
+            .unwrap_or_default();
+        for take in takes {
+            let inventory = host.player_stacks(take.player).unwrap_or_default();
+            let cursor = host.menu_cursor(take.player);
+            let mut after = carried(&inventory, cursor.as_ref());
+            if let Some(off) = host.player_equipment(take.player, EquipmentSlot::OffHand) {
+                *after.entry(potion_key(&off)).or_default() += off.count;
+            }
+            let gained: Vec<&(String, Option<String>)> = after
+                .iter()
+                .filter(|(k, n)| take.before.get(*k).is_none_or(|b| *n > b))
+                .map(|(k, _)| k)
+                .collect();
+            if gained.is_empty() && !take.thrown {
+                continue;
+            }
+            match take.taken {
+                Taken::Potion => {
+                    for (item, potion) in gained.into_iter().cloned() {
+                        if item.ends_with("potion") {
+                            self.event(
+                                host,
+                                Event::Brewed {
+                                    player: take.player,
+                                    item,
+                                    potion,
+                                },
+                            );
+                        }
+                    }
+                }
+                Taken::Map { locked } => {
+                    self.did(host, take.player, Deed::UseCartographyTable);
+                    if locked {
+                        self.did(host, take.player, Deed::LockMap);
+                    }
+                }
+                Taken::Deed(deed) => self.did(host, take.player, deed),
+            }
+        }
+    }
+
+    /// Every second, the mobs each lockout player holds on a lead.
+    fn scan_leashes(&self, host: &mut dyn Host, players: &[NativeServerPlayer]) {
+        let wanted: Vec<u128> = match self.server.try_lock() {
+            Ok(s) => match s.game.as_ref() {
+                Some(m)
+                    if m.board.iter().any(|sq| {
+                        sq.completed_by.is_none()
+                            && matches!(sq.trigger, Trigger::LeashUnique { .. } | Trigger::LeashIronGolem)
+                    }) =>
+                {
+                    players
+                        .iter()
+                        .map(|p| p.uuid)
+                        .filter(|u| m.team_of(*u).is_some())
+                        .collect()
+                }
+                _ => return,
+            },
+            Err(_) => return,
+        };
+        for p in players.iter().filter(|p| wanted.contains(&p.uuid)) {
+            let kinds = leashed_kinds(host, p);
+            if !kinds.is_empty() {
+                self.event(host, Event::Leashed { player: p.uuid, kinds });
+            }
+        }
+    }
+}
+
+/// The 1.16 bartering table (`LockoutInitializer`'s `LootTableEvents.REPLACE`), in 26.3's
+/// loot table format.
+fn bartering_table() -> serde_json::Value {
+    use serde_json::json;
+    let enchanted = |item: &str, weight: i32| {
+        json!({"type": "minecraft:item", "name": item, "weight": weight,
+            "modifier": {"type": "minecraft:enchant_randomly", "options": "minecraft:soul_speed"}})
+    };
+    let potion = |item: &str| {
+        json!({"type": "minecraft:item", "name": item, "weight": 10,
+            "modifier": {"type": "minecraft:set_potion", "id": "minecraft:fire_resistance"}})
+    };
+    let counted = |item: &str, min: i32, max: i32, weight: i32| {
+        json!({"type": "minecraft:item", "name": item, "weight": weight,
+            "modifier": {"type": "minecraft:set_count", "count": {"type": "minecraft:uniform", "min": min, "max": max}}})
+    };
+    let entries = vec![
+        enchanted("minecraft:book", 5),
+        enchanted("minecraft:iron_boots", 8),
+        potion("minecraft:potion"),
+        potion("minecraft:splash_potion"),
+        counted("minecraft:iron_nugget", 9, 36, 10),
+        counted("minecraft:quartz", 8, 16, 20),
+        counted("minecraft:glowstone_dust", 5, 12, 20),
+        counted("minecraft:magma_cream", 2, 6, 20),
+        counted("minecraft:ender_pearl", 4, 8, 20),
+        counted("minecraft:string", 8, 24, 20),
+        counted("minecraft:fire_charge", 1, 5, 40),
+        counted("minecraft:gravel", 8, 16, 40),
+        counted("minecraft:leather", 4, 10, 40),
+        counted("minecraft:nether_brick", 4, 16, 40),
+        json!({"type": "minecraft:item", "name": "minecraft:obsidian", "weight": 40}),
+        counted("minecraft:crying_obsidian", 1, 3, 40),
+        counted("minecraft:soul_sand", 4, 16, 40),
+    ];
+    json!({
+        "type": "minecraft:barter",
+        "pools": [{"rolls": 1, "entries": entries}],
+        "random_sequence": "minecraft:gameplay/piglin_bartering",
+    })
+}
+
 impl Hooks for Lockout {
     // ---- the server -------------------------------------------------------------------
+
+    /// Piglins barter as in 1.16 (`LockoutInitializer`'s `LootTableEvents.REPLACE`).
+    fn loot_table_load(&self, event: &mut LootTableLoadEvent<'_>) {
+        if event.id == "minecraft:gameplay/piglin_bartering" {
+            *event.table = bartering_table();
+        }
+    }
 
     fn register_commands(&self, _host: &mut dyn Host, event: &mut RegisterCommandsEvent<'_>) {
         for (usage, level) in COMMANDS {
@@ -1215,10 +2031,17 @@ impl Hooks for Lockout {
         Flow::Cancel
     }
 
+    fn hears_projectile_impacts(&self, _host: &dyn Host, event: &mut HearsProjectileImpactsEvent) {
+        if self.live.load(Ordering::Relaxed) {
+            event.hears = true;
+        }
+    }
+
     fn use_item(&self, host: &mut dyn Host, event: &mut UseItemEvent<'_>) -> Flow {
-        if is_tracker(event.stack)
-            && let Some(p) = host.acting_player()
-        {
+        let Some(p) = host.acting_player() else {
+            return Flow::Continue;
+        };
+        if is_tracker(event.stack) {
             let actions = self
                 .server
                 .lock()
@@ -1231,6 +2054,16 @@ impl Hooks for Lockout {
                 })
                 .unwrap_or_default();
             self.apply(host, actions, false);
+        }
+        // `CrossbowItemMixin`: a crossbow loaded with a rocket is about to shoot it.
+        if &*event.stack.item == "minecraft:crossbow"
+            && event
+                .stack
+                .extra
+                .as_ref()
+                .is_some_and(|e| e.charged.iter().any(|c| &*c.item == "minecraft:firework_rocket"))
+        {
+            self.did(host, p.uuid, Deed::ShootFireworkFromCrossbow);
         }
         Flow::Continue
     }
@@ -1271,84 +2104,162 @@ impl Hooks for Lockout {
         self.apply(host, actions, false);
     }
 
-    fn player_inventory_changed(&self, host: &mut dyn Host, event: &mut PlayerInventoryChangedEvent<'_>) {
-        let stacks = event.stacks.iter().map(|s| s.as_ref().map(stack_view)).collect();
-        self.event(
-            host,
-            Event::Inventory {
-                player: event.player,
-                stacks,
-            },
-        );
-    }
-
     fn player_advancement_done(&self, host: &mut dyn Host, event: &mut PlayerAdvancementDoneEvent<'_>) {
+        let id = event.advancement.to_owned();
+        let title = names::advancement(&id).or_else(|| host.advancement_display(&id).map(|d| d.title.plain()));
         self.event(
             host,
             Event::Advancement {
                 player: event.player,
-                id: event.advancement.to_owned(),
+                id,
+                title,
             },
         );
     }
 
+    fn player_advancement_criterion_grant(
+        &self,
+        host: &mut dyn Host,
+        event: &mut PlayerAdvancementCriterionGrantEvent<'_>,
+    ) {
+        self.event(
+            host,
+            Event::Criterion {
+                player: event.player,
+                advancement: event.advancement.to_owned(),
+                criterion: event.criterion.to_owned(),
+            },
+        );
+    }
+
+    /// `PlayerAdvancementTrackerMixin.onBroadcastInChat`: a spectator's advancements aren't
+    /// announced while a match runs.
+    fn broadcast_message(&self, host: &dyn Host, event: &mut BroadcastMessageEvent<'_>) -> Flow {
+        if !self.live.load(Ordering::Relaxed)
+            || !event
+                .line
+                .translation_key()
+                .is_some_and(|k| k.starts_with("chat.type.advancement."))
+        {
+            return Flow::Continue;
+        }
+        let component = event.line.component();
+        let Some(who) = component.get("with").and_then(|w| w.get(0)) else {
+            return Flow::Continue;
+        };
+        let name = who
+            .get("insertion")
+            .and_then(|n| n.as_str())
+            .map(str::to_owned)
+            .unwrap_or_else(|| plain_of(who));
+        let Some(player) = online(host).into_iter().find(|p| p.name == name) else {
+            return Flow::Continue;
+        };
+        let spectating = self
+            .server
+            .try_lock()
+            .is_ok_and(|s| s.game.as_ref().is_some_and(|m| m.team_of(player.uuid).is_none()));
+        if spectating { Flow::Cancel } else { Flow::Continue }
+    }
+
     fn living_incoming_damage_v3(&self, event: &mut LivingIncomingDamageV3Event<'_>) -> Flow {
+        let player = event.kind == "minecraft:player";
         if let Some(victim) = event.victim_uuid
+            && player
             && self.frozen.lock().is_ok_and(|f| f.contains(&victim))
         {
             return Flow::Cancel;
         }
-        if let (Some(attacker), Ok(mut s)) = (event.attacker_uuid, self.server.try_lock()) {
-            let now = s.server_ticks;
-            s.last_hurt_by.insert(event.victim, (attacker, now));
+        // `PlayerMixin.onStartMatch`: no player is hurt until the match has started.
+        if player && self.immune.load(Ordering::Relaxed) {
+            return Flow::Cancel;
+        }
+        if let Ok(mut h) = self.hits.lock() {
+            h.insert(
+                event.victim,
+                Hit {
+                    victim: event.victim_uuid.filter(|_| player),
+                    attacker: event.attacker_uuid,
+                    attacker_entity: event.attacker,
+                    direct: event.direct,
+                    damage_type: event.damage_type.to_owned(),
+                    amount: event.amount as f64,
+                },
+            );
         }
         Flow::Continue
     }
 
+    /// The hit landed (`hurtServer` returned true): it counts, and its player is remembered
+    /// for the kill (`lastHurtByPlayer`, 100 ticks).
     fn living_damage_post(&self, event: &mut LivingDamagePostEvent<'_>) {
-        if event.amount <= 0.0 {
+        let victim = event.entity as u32;
+        let Some(hit) = self.hits.lock().ok().and_then(|mut h| h.remove(&victim)) else {
+            return;
+        };
+        // A shield that took the whole hit makes `hurtServer` answer false.
+        if event.amount <= 0.0 && self.blocking.lock().is_ok_and(|b| b.contains(&event.entity)) {
             return;
         }
-        let (victim, attacker) = match self.entity_players.lock() {
-            Ok(m) => (m.get(&event.entity).copied(), m.get(&event.causing).copied()),
-            Err(_) => return,
-        };
-        if (victim.is_some() || attacker.is_some())
+        let now = self.now.load(Ordering::Relaxed);
+        if let Ok(mut credit) = self.credit.lock() {
+            let entry = credit.entry(victim).or_default();
+            match (hit.attacker, hit.attacker_entity) {
+                (Some(p), _) => entry.player = Some((p, now)),
+                (None, Some(mob)) => entry.mob = Some((mob, now)),
+                _ => {}
+            }
+            if let Some(d) = hit.direct {
+                entry.direct = Some((d, now));
+            }
+        }
+        if (hit.victim.is_some() || hit.attacker.is_some())
             && let Ok(mut q) = self.queued.lock()
         {
             q.push(Event::Damage {
-                victim,
-                attacker,
-                damage_type: event.damage_type.to_owned(),
-                amount: event.amount,
+                victim: hit.victim,
+                attacker: hit.attacker,
+                arrow: ["minecraft:arrow", "minecraft:trident"].contains(&hit.damage_type.as_str()),
+                damage_type: hit.damage_type,
+                amount: hit.amount,
             });
         }
     }
 
     fn living_death(&self, host: &mut dyn Host, event: &mut LivingDeathEvent<'_>) -> Flow {
         let players = online(host);
-        let hurt_by = self
-            .server
-            .try_lock()
-            .ok()
-            .and_then(|s| s.last_hurt_by.get(&event.entity).map(|(p, _)| *p));
+        let now = self.now.load(Ordering::Relaxed);
+        let credit = self.kill_credit(host, &players, event.entity, now);
         if event.kind == "minecraft:player" {
             if let Some(uuid) = uuid_of_entity(&players, event.entity as i32) {
                 let killer_kind = (event.attacker != 0).then(|| kind_of(host, event.attacker)).flatten();
+                let direct = self
+                    .credit
+                    .lock()
+                    .ok()
+                    .and_then(|c| c.get(&event.entity).and_then(|c| c.direct))
+                    .filter(|(_, t)| now - t <= 1)
+                    .map(|(d, _)| d);
+                let direct_kind = direct.and_then(|d| kind_of(host, d));
                 if let Ok(mut d) = self.deaths.lock() {
                     let entry = d.entry(uuid).or_default();
                     entry.damage_type = Some(event.damage_type.to_owned());
                     entry.killer_kind = killer_kind;
-                    entry.killer_player = hurt_by.filter(|k| *k != uuid);
+                    entry.killer_player = credit.filter(|k| *k != uuid);
+                    entry.direct_kind = direct_kind;
                 }
             }
             return Flow::Continue;
         }
-        if let Some(player) = hurt_by {
+        if let Some(player) = credit {
             let color = (event.kind == "minecraft:sheep")
                 .then(|| sheep_color(host, event.entity))
                 .flatten();
-            let dimension = players.iter().find(|p| p.uuid == player).map(|p| p.dimension.clone());
+            let dimension = players
+                .iter()
+                .find(|p| p.uuid == player)
+                .map(|p| p.dimension.clone())
+                .unwrap_or_default();
             self.event(
                 host,
                 Event::Kill {
@@ -1356,6 +2267,7 @@ impl Hooks for Lockout {
                     kind: event.kind.to_owned(),
                     color,
                     dimension,
+                    damage_type: event.damage_type.to_owned(),
                 },
             );
         }
@@ -1416,52 +2328,81 @@ impl Hooks for Lockout {
         }
     }
 
-    fn mob_effect_added(&self, host: &mut dyn Host, event: &mut MobEffectAddedEvent<'_>) {
-        let players = online(host);
-        if let Some(player) = event.entity.and_then(|e| uuid_of_entity(&players, e)) {
-            self.event(
-                host,
-                Event::EffectAdded {
-                    player,
-                    effect: event.effect.to_owned(),
-                },
-            );
-        }
-    }
-
     fn living_entity_use_item_start(&self, host: &mut dyn Host, event: &mut LivingEntityUseItemStartEvent<'_>) -> Flow {
-        let players = online(host);
-        let Some(player) = event.entity.and_then(|e| uuid_of_entity(&players, e)) else {
+        if host.window() || event.entity.is_some() {
+            return Flow::Continue;
+        }
+        let Some(p) = host.acting_player() else {
             return Flow::Continue;
         };
-        let item = event.stack.item.to_string();
-        if item == "minecraft:milk_bucket" {
-            let has_effects = host.effects(player).is_some_and(|e| !e.is_empty());
-            if let Ok(mut m) = self.milk.lock() {
-                m.insert(player, has_effects);
+        match &*event.stack.item {
+            // `ConsumeItemCriterionMixin` asks whether there were effects to drink away.
+            "minecraft:milk_bucket" => {
+                let had = self
+                    .effects
+                    .lock()
+                    .is_ok_and(|e| e.get(&p.uuid).is_some_and(|e| !e.is_empty()));
+                if let Ok(mut m) = self.milk.lock() {
+                    m.insert(p.uuid, had);
+                }
             }
+            // `GoatHornItemMixin`: a horn is only used off its cooldown.
+            "minecraft:goat_horn" => self.did(host, p.uuid, Deed::TootGoatHorn),
+            _ => {}
         }
-        self.event(host, Event::UsedItem { player, item });
+        Flow::Continue
+    }
+
+    /// `UsingItemCriterionMixin`: every tick a spyglass is up, the mob it looks at.
+    fn living_entity_use_item_tick(&self, host: &mut dyn Host, event: &mut LivingEntityUseItemTickEvent<'_>) -> Flow {
+        if host.window() || event.entity.is_some() || &*event.stack.item != "minecraft:spyglass" {
+            return Flow::Continue;
+        }
+        let wanted = self.server.try_lock().is_ok_and(|s| {
+            s.game.as_ref().is_some_and(|m| {
+                m.board.iter().any(|sq| {
+                    sq.completed_by.is_none() && matches!(sq.trigger, Trigger::Spy { .. } | Trigger::SpyUnique { .. })
+                })
+            })
+        });
+        if !wanted {
+            return Flow::Continue;
+        }
+        let Some(p) = host.acting_player() else {
+            return Flow::Continue;
+        };
+        if let Some(kind) = spied_mob(host, &p) {
+            self.event(host, Event::Spied { player: p.uuid, kind });
+        }
         Flow::Continue
     }
 
     fn living_entity_use_item_finish(&self, host: &mut dyn Host, event: &mut LivingEntityUseItemFinishEvent<'_>) {
-        let players = online(host);
-        let Some(player) = event.entity.and_then(|e| uuid_of_entity(&players, e)) else {
+        if host.window() || event.entity.is_some() {
             return;
-        };
+        }
+        let Some(p) = host.acting_player() else { return };
         let server::Held { item, potion, .. } = stack_view(event.stack);
+        let food = host.component(event.stack, "minecraft:food").ok().flatten().is_some();
         if item == "minecraft:milk_bucket"
             && self
                 .milk
                 .lock()
                 .ok()
-                .and_then(|mut m| m.remove(&player))
+                .and_then(|mut m| m.remove(&p.uuid))
                 .unwrap_or(false)
         {
-            self.event(host, Event::MilkAway { player });
+            self.event(host, Event::MilkAway { player: p.uuid });
         }
-        self.event(host, Event::Consumed { player, item, potion });
+        self.event(
+            host,
+            Event::Consumed {
+                player: p.uuid,
+                item,
+                potion,
+                food,
+            },
+        );
     }
 
     fn player_stat_award(&self, host: &mut dyn Host, event: &mut PlayerStatAwardEvent<'_>) -> Flow {
@@ -1470,7 +2411,9 @@ impl Hooks for Lockout {
                 host,
                 Event::Stat {
                     player: event.player,
+                    stat_type: event.stat_type.to_owned(),
                     stat: event.stat.to_owned(),
+                    value: event.value,
                 },
             );
         }
@@ -1478,15 +2421,24 @@ impl Hooks for Lockout {
     }
 
     fn destroy_block(&self, host: &mut dyn Host, event: &mut DestroyBlockEvent) -> Flow {
-        if let Some(player) = host.acting_player() {
-            let block = host.block(event.pos);
-            self.event(
-                host,
-                Event::Mined {
-                    player: player.uuid,
-                    block,
-                },
-            );
+        let Some(player) = host.acting_player() else {
+            return Flow::Continue;
+        };
+        let block = host.block(event.pos);
+        // `CreakingHeartBlockEntityMixin`: breaking a heart while its Creaking is out kills it.
+        let creaking = block == "minecraft:creaking_heart"
+            && host
+                .block_entity_tag(&player.dimension, event.pos)
+                .is_some_and(|t| t.get("creaking").is_some());
+        self.event(
+            host,
+            Event::Mined {
+                player: player.uuid,
+                block,
+            },
+        );
+        if creaking {
+            self.did(host, player.uuid, Deed::KillCreaking);
         }
         Flow::Continue
     }
@@ -1499,6 +2451,33 @@ impl Hooks for Lockout {
                 dimension: event.to.to_owned(),
             },
         );
+        // `ThrownEnderpearlMixin`: a pearl that went through a portal pulled its owner along.
+        let now = self.now.load(Ordering::Relaxed);
+        let pearl = self
+            .pearls
+            .lock()
+            .ok()
+            .and_then(|mut p| p.remove(&event.player))
+            .is_some_and(|t| now - t <= 2);
+        if pearl && portal_crossing(event.from, event.to) {
+            self.did(host, event.player, Deed::PearlThroughPortal);
+        }
+    }
+
+    fn player_teleport(&self, event: &mut PlayerTeleportEvent<'_>) -> Flow {
+        if event.cause == "ender_pearl" {
+            if portal_crossing(event.from_dimension, event.to_dimension) {
+                if let Ok(mut q) = self.queued.lock() {
+                    q.push(Event::Did {
+                        player: event.player,
+                        deed: Deed::PearlThroughPortal,
+                    });
+                }
+            } else if let Ok(mut p) = self.pearls.lock() {
+                p.insert(event.player, self.now.load(Ordering::Relaxed));
+            }
+        }
+        Flow::Continue
     }
 
     fn player_level_change(&self, host: &mut dyn Host, event: &mut PlayerLevelChangeEvent<'_>) {
@@ -1512,6 +2491,9 @@ impl Hooks for Lockout {
     }
 
     fn item_crafted(&self, host: &mut dyn Host, event: &mut ItemCraftedEvent<'_>) {
+        if event.stack.count == 0 {
+            return;
+        }
         self.event(
             host,
             Event::Crafted {
@@ -1519,23 +2501,6 @@ impl Hooks for Lockout {
                 item: event.stack.item.to_string(),
             },
         );
-    }
-
-    fn entity_mount(&self, host: &mut dyn Host, event: &mut EntityMountEvent<'_>) -> Flow {
-        if !event.mounting || event.kind != "minecraft:player" {
-            return Flow::Continue;
-        }
-        let players = online(host);
-        if let Some(player) = uuid_of_entity(&players, event.entity as i32) {
-            self.event(
-                host,
-                Event::Ride {
-                    player,
-                    vehicle: event.vehicle_kind.to_owned(),
-                },
-            );
-        }
-        Flow::Continue
     }
 
     fn player_name_entity(&self, host: &mut dyn Host, event: &mut PlayerNameEntityEvent<'_>) {
@@ -1551,50 +2516,6 @@ impl Hooks for Lockout {
         }
     }
 
-    fn player_destroy_item(&self, host: &mut dyn Host, event: &mut PlayerDestroyItemEvent<'_>) {
-        self.event(
-            host,
-            Event::ItemBroken {
-                player: event.player,
-                item: event.item.to_owned(),
-            },
-        );
-    }
-
-    fn block_place(&self, host: &mut dyn Host, event: &mut BlockPlaceEvent<'_>) -> Flow {
-        self.event(
-            host,
-            Event::PlacedBlock {
-                player: event.player,
-                item: event.stack.item.to_string(),
-            },
-        );
-        Flow::Continue
-    }
-
-    fn hanging_place(&self, host: &mut dyn Host, event: &mut HangingPlaceEvent<'_>) -> Flow {
-        self.event(
-            host,
-            Event::PlacedHanging {
-                player: event.player,
-                kind: event.kind.to_owned(),
-            },
-        );
-        Flow::Continue
-    }
-
-    fn food_level_changed(&self, host: &mut dyn Host, event: &mut FoodLevelChangedEvent<'_>) -> Flow {
-        self.event(
-            host,
-            Event::Food {
-                player: event.player,
-                from: event.from,
-                to: event.to,
-            },
-        );
-        Flow::Continue
-    }
-
     fn living_change_target(&self, event: &mut LivingChangeTargetEvent<'_>) -> Flow {
         if let (Some(player), Ok(mut q)) = (event.target, self.queued.lock()) {
             q.push(Event::Enraged {
@@ -1606,128 +2527,372 @@ impl Hooks for Lockout {
     }
 
     fn player_shield_disable(&self, host: &mut dyn Host, event: &mut PlayerShieldDisableEvent<'_>) {
-        self.event(host, Event::ShieldDisabled { player: event.player });
+        self.did(host, event.player, Deed::ShieldDisabled);
     }
 
+    /// `ItemFrameEntityMixin`: an item frame put in a plain (not glow) item frame.
     fn player_item_frame_change(&self, host: &mut dyn Host, event: &mut PlayerItemFrameChangeEvent<'_>) {
-        if event.item.ends_with("item_frame") {
-            self.event(host, Event::ItemFrameInFrame { player: event.player });
+        if event.action == "put"
+            && event.item == "minecraft:item_frame"
+            && kind_of(host, event.entity_id).as_deref() == Some("minecraft:item_frame")
+        {
+            self.did(host, event.player, Deed::ItemFrameInItemFrame);
         }
     }
 
     fn interact_entity_v2(&self, host: &mut dyn Host, event: &mut InteractEntityV2Event<'_>) -> Flow {
-        let wolf_armor =
-            event.kind == "minecraft:wolf" && event.stack.is_some_and(|s| &*s.item == "minecraft:wolf_armor");
-        if let (true, Some(player)) = (wolf_armor, host.acting_player()) {
-            self.event(host, Event::WolfArmor { player: player.uuid });
+        let Some(p) = host.acting_player() else {
+            return Flow::Continue;
+        };
+        let holding = event.stack.map(|s| &*s.item);
+        let id = event.entity as u32;
+        let check = match (event.kind, holding) {
+            // `WolfEntityMixin`: the armour went on (next tick shows it).
+            ("minecraft:wolf", Some("minecraft:wolf_armor")) => Some(Check::Wolf {
+                player: p.uuid,
+                wolf: id,
+            }),
+            // `AllayMixin`: a dancing Allay given a shard duplicates, and starts its cooldown.
+            ("minecraft:allay", Some("minecraft:amethyst_shard")) => Some(Check::Allay {
+                player: p.uuid,
+                allay: id,
+                cooldown: allay_cooldown(host, &p.dimension, id),
+            }),
+            _ => None,
+        };
+        if let (Some(check), Ok(mut c)) = (check, self.checks.lock()) {
+            if let Check::Wolf { .. } = check
+                && wolf_armored(host, id)
+            {
+                return Flow::Continue;
+            }
+            c.push(check);
         }
         Flow::Continue
     }
 
-    fn player_stonecutter_recipe_select(
-        &self,
-        host: &mut dyn Host,
-        event: &mut PlayerStonecutterRecipeSelectEvent<'_>,
-    ) {
-        self.event(host, Event::Stonecutter { player: event.player });
+    /// `ArmorStandMixin`: the stand is checked once the click is done.
+    fn armor_stand_manipulate(&self, host: &mut dyn Host, event: &mut ArmorStandManipulateEvent<'_>) -> Flow {
+        let spectator = host.acting_player().is_some_and(|p| p.game_mode == 3);
+        if !spectator && let Ok(mut c) = self.checks.lock() {
+            c.push(Check::ArmorStand {
+                player: event.player,
+                stand: event.stand_id as u32,
+            });
+        }
+        Flow::Continue
     }
 
-    fn player_loom_pattern_select(&self, host: &mut dyn Host, event: &mut PlayerLoomPatternSelectEvent<'_>) {
-        self.event(host, Event::Loom { player: event.player });
+    fn player_toggle_entity_age_lock(&self, host: &mut dyn Host, event: &mut PlayerToggleEntityAgeLockEvent<'_>) {
+        self.did(host, event.player, Deed::GoldenDandelion);
     }
 
     fn anvil_craft_post(&self, host: &mut dyn Host, event: &mut AnvilCraftPostEvent<'_>) {
-        self.event(host, Event::Anvil { player: event.player });
+        self.did(host, event.player, Deed::UseAnvil);
     }
 
-    fn projectile_impact(&self, host: &mut dyn Host, event: &mut ProjectileImpactEvent<'_>) -> Flow {
-        if event.entity_kind == "minecraft:player" {
-            let players = online(host);
-            if let Some(victim) = event.entity.and_then(|e| uuid_of_entity(&players, e as i32)) {
-                self.event(
-                    host,
-                    Event::HitBy {
-                        victim,
-                        projectile: event.kind.to_owned(),
-                    },
-                );
+    fn player_container_open(&self, _host: &mut dyn Host, event: &mut PlayerContainerOpenEvent<'_>) {
+        if let Ok(mut m) = self.menus.lock() {
+            m.insert(
+                event.player,
+                OpenMenu {
+                    kind: event.menu.trim_start_matches("minecraft:").to_owned(),
+                    extra: None,
+                },
+            );
+        }
+    }
+
+    fn player_container_close(&self, _host: &mut dyn Host, event: &mut PlayerContainerCloseEvent<'_>) {
+        if let Ok(mut m) = self.menus.lock() {
+            m.remove(&event.player);
+        }
+    }
+
+    /// A click on a station's result (`SlotMixin`, `GrindstoneScreenHandlerOutputSlotMixin`,
+    /// `SmithingScreenHandlerMixin`, `BrewingStandScreenHandlerPotionSlotMixin`): whether it
+    /// took something shows on the next tick, in the player's inventory and cursor.
+    fn inventory_click(&self, host: &mut dyn Host, event: &mut InventoryClickEvent<'_>) -> Flow {
+        let Ok(mut menus) = self.menus.lock() else {
+            return Flow::Continue;
+        };
+        let Some(menu) = menus.get_mut(&event.player) else {
+            return Flow::Continue;
+        };
+        let cursor = host.menu_cursor(event.player);
+        let inventory = host.player_stacks(event.player).unwrap_or_default();
+        if menu.kind == "cartography_table" {
+            // What sits in the extra slot: a glass pane there locks the map.
+            let from_inventory = |slot: i32| -> Option<String> {
+                let i = match slot {
+                    3..=29 => slot as usize + 6,
+                    30..=38 => slot as usize - 30,
+                    _ => return None,
+                };
+                inventory.get(i).cloned().flatten().map(|s| s.item.to_string())
+            };
+            match (event.slot, event.mode) {
+                (1, 0) => menu.extra = cursor.as_ref().map(|c| c.item.to_string()),
+                (1, 1) => menu.extra = None,
+                (s, 1) if from_inventory(s).as_deref() == Some("minecraft:glass_pane") => {
+                    menu.extra = Some("minecraft:glass_pane".into());
+                }
+                _ => {}
+            }
+        }
+        let taken = match (menu.kind.as_str(), event.slot) {
+            ("brewing_stand", 0..=2) => Some(Taken::Potion),
+            ("stonecutter", 1) => Some(Taken::Deed(Deed::UseStonecutter)),
+            ("loom", 3) => Some(Taken::Deed(Deed::UseLoom)),
+            ("cartography_table", 2) => Some(Taken::Map {
+                locked: menu.extra.as_deref() == Some("minecraft:glass_pane"),
+            }),
+            ("grindstone", 2) => Some(Taken::Deed(Deed::UseGrindstone)),
+            ("smithing", 3) => Some(Taken::Deed(Deed::UseSmithingTable)),
+            _ => None,
+        };
+        drop(menus);
+        // Pick up, shift-click, hotbar swap, throw.
+        let Some(taken) = taken.filter(|_| matches!(event.mode, 0 | 1 | 2 | 4)) else {
+            return Flow::Continue;
+        };
+        let mut before = carried(&inventory, cursor.as_ref());
+        if let Some(off) = host.player_equipment(event.player, EquipmentSlot::OffHand) {
+            *before.entry(potion_key(&off)).or_default() += off.count;
+        }
+        if let Ok(mut t) = self.takes.lock() {
+            t.push(Take {
+                player: event.player,
+                taken,
+                thrown: event.mode == 4,
+                before,
+            });
+        }
+        Flow::Continue
+    }
+
+    fn right_click_block_v2(&self, host: &mut dyn Host, event: &mut RightClickBlockV2Event) -> Flow {
+        let Some(p) = host.acting_player() else {
+            return Flow::Continue;
+        };
+        let Some(level) = host.entity(p.entity_id as u32).and_then(|e| host.entity_level(e)) else {
+            return Flow::Continue;
+        };
+        let pos = event.pos;
+        let Some(block) = host.level_block(level, pos) else {
+            return Flow::Continue;
+        };
+        let held = host
+            .entity(p.entity_id as u32)
+            .and_then(|e| host.living(e))
+            .and_then(|l| host.living_hand_item(l, event.hand));
+        let item = held.as_ref().map(|s| s.item.to_string()).unwrap_or_default();
+        let prop = |host: &dyn Host, key: &str| host.level_block_property(level, pos, key);
+        let path = block.trim_start_matches("minecraft:");
+        // `UseBlockEventHandler`: flint and steel or a fire charge on a candle that can be lit.
+        if path.ends_with("candle")
+            && prop(host, "lit").as_deref() == Some("false")
+            && prop(host, "waterlogged").as_deref() == Some("false")
+            && (item == "minecraft:flint_and_steel" || item == "minecraft:fire_charge")
+        {
+            self.did(host, p.uuid, Deed::LightCandle);
+        }
+        let kind = match path {
+            "composter" => {
+                let level_now: i32 = prop(host, "level").and_then(|l| l.parse().ok()).unwrap_or(0);
+                if level_now == 8 {
+                    // `ComposterBlockMixin.emptyFullComposterMixin`.
+                    self.did(host, p.uuid, Deed::UseComposter);
+                    None
+                } else if level_now < 7 && held.is_some() {
+                    let food = held
+                        .as_ref()
+                        .is_some_and(|s| host.component(s, "minecraft:food").ok().flatten().is_some());
+                    Some(BlockCheck::Composter {
+                        item: item.clone(),
+                        food,
+                        level: level_now,
+                    })
+                } else {
+                    None
+                }
+            }
+            "campfire" | "soul_campfire" => Some(BlockCheck::Campfire),
+            "chiseled_bookshelf" => Some(BlockCheck::Bookshelf),
+            "decorated_pot" => Some(BlockCheck::Pot),
+            p if (p.starts_with("crimson_") || p.starts_with("warped_"))
+                && p.ends_with("_sign")
+                && item == "minecraft:glow_ink_sac" =>
+            {
+                Some(BlockCheck::Sign {
+                    crimson: p.starts_with("crimson_"),
+                })
+            }
+            "chest" | "barrel" | "trapped_chest" => Some(BlockCheck::Loot),
+            _ => None,
+        };
+        if let Some(kind) = kind {
+            let before = match &kind {
+                BlockCheck::Composter { level, .. } => BlockState::Level(*level),
+                _ => block_state(host, &p.dimension, pos, &kind),
+            };
+            if !matches!((&kind, &before), (BlockCheck::Loot, BlockState::None))
+                && let Ok(mut c) = self.checks.lock()
+            {
+                c.push(Check::Block {
+                    player: p.uuid,
+                    dimension: p.dimension.clone(),
+                    pos,
+                    kind,
+                    before,
+                });
             }
         }
         Flow::Continue
     }
 
-    fn item_picked_up_v2(&self, host: &mut dyn Host, event: &mut ItemPickedUpV2Event<'_>) -> Flow {
-        self.event(
-            host,
-            Event::PickedUp {
-                player: event.player,
-                thrower: event.thrower.filter(|t| *t != event.player),
-            },
-        );
+    fn projectile_impact(&self, host: &mut dyn Host, event: &mut ProjectileImpactEvent<'_>) -> Flow {
+        let players = online(host);
+        let shooter = players
+            .iter()
+            .find(|p| p.entity_id == event.owner as i32 && event.owner != 0);
+        match (event.entity, event.entity_kind, shooter) {
+            // `PlayerMixin.onCollide`: a player's snowball or egg on another player.
+            (Some(e), "minecraft:player", Some(shooter))
+                if event.kind == "minecraft:snowball" || event.kind == "minecraft:egg" =>
+            {
+                if let Some(victim) = players.iter().find(|p| p.entity_id == e as i32) {
+                    self.event(
+                        host,
+                        Event::HitBy {
+                            shooter: shooter.uuid,
+                            shooter_name: shooter.name.clone(),
+                            victim: victim.uuid,
+                            victim_name: victim.name.clone(),
+                            projectile: event.kind.to_owned(),
+                        },
+                    );
+                }
+            }
+            (Some(e), "minecraft:end_crystal", Some(shooter)) => self.hit_crystal(e, shooter.uuid),
+            _ => {}
+        }
         Flow::Continue
     }
 
-    /// Twice a second for each player: where they are, their effects and their sprinting.
-    fn player_tick(&self, host: &mut dyn Host, _event: &mut PlayerTickEvent) {
-        let Some(p) = host.acting_player() else { return };
-        let ticks = match self.server.try_lock() {
-            Ok(s) if s.game.as_ref().is_some_and(|m| m.started && m.running) => s.server_ticks,
-            _ => return,
+    fn attack_entity(&self, host: &mut dyn Host, event: &mut AttackEntityEvent<'_>) -> Flow {
+        if event.kind == "minecraft:end_crystal"
+            && let Some(p) = host.acting_player()
+        {
+            self.hit_crystal(event.entity as u32, p.uuid);
+        }
+        Flow::Continue
+    }
+
+    /// `EndCrystalMixin`: a crystal a player hit blew up.
+    fn explosion_detonate(&self, host: &mut dyn Host, event: &mut ExplosionDetonateEvent<'_>) {
+        let Some((id, "minecraft:end_crystal")) = event.source else {
+            return;
         };
-        if (ticks + (p.uuid as i64 & 0xF)) % 10 != 0 {
+        let now = self.now.load(Ordering::Relaxed);
+        let player = self
+            .crystals
+            .lock()
+            .ok()
+            .and_then(|mut c| c.remove(&id))
+            .filter(|(_, t)| now - t <= 1)
+            .map(|(p, _)| p);
+        if let Some(player) = player {
+            self.did(host, player, Deed::ExplodeEndCrystal);
+        }
+    }
+
+    fn item_picked_up_v2(&self, host: &mut dyn Host, event: &mut ItemPickedUpV2Event<'_>) -> Flow {
+        // `DroppedItemOwners`: who dropped it, death drops included.
+        let owner = event.thrower.or_else(|| {
+            let dropped = self.dropped.lock().ok()?;
+            dropped
+                .iter()
+                .find(|(id, _)| {
+                    host.entity(**id)
+                        .and_then(|e| host.entity_position(e))
+                        .is_some_and(|at| (0..3).all(|i| (at[i] - event.position[i]).abs() < 0.01))
+                })
+                .map(|(_, owner)| *owner)
+        });
+        if let Some(owner) = owner.filter(|o| *o != event.player) {
+            self.event(
+                host,
+                Event::PickedUp {
+                    player: event.player,
+                    owner,
+                },
+            );
+        }
+        Flow::Continue
+    }
+
+    fn loot_drops(&self, host: &mut dyn Host, event: &mut LootDropsEvent<'_>) {
+        let c = event.context;
+        // A dying player's inventory: its items are told as they join the level.
+        if let (Some((_, "minecraft:player")), Some(owner), false) = (c.entity, c.player, c.used) {
+            if let Ok(mut d) = self.death_drops.lock() {
+                d.push((
+                    c.dimension.to_owned(),
+                    c.origin,
+                    owner,
+                    self.now.load(Ordering::Relaxed),
+                ));
+            }
             return;
         }
-        let pos = [
-            p.position[0].floor() as i32,
-            p.position[1].floor() as i32,
-            p.position[2].floor() as i32,
-        ];
-        let biome = host.biome(pos);
-        let below = Some(host.block([pos[0], pos[1] - 1, pos[2]]));
-        let me = host.entity(p.entity_id as u32);
-        let in_water = me.and_then(|e| host.entity_is_in_water(e)).unwrap_or(false);
-        let on_fire = me.and_then(|e| host.entity_fire_ticks(e)).is_some_and(|t| t > 0);
-        self.event(
-            host,
-            Event::Position {
-                player: p.uuid,
-                dimension: p.dimension.clone(),
-                y: p.position[1],
-                biome,
-                below,
-                in_water,
-                on_fire,
-            },
-        );
-        let effects: Vec<String> = host
-            .effects(p.uuid)
-            .unwrap_or_default()
-            .into_iter()
-            .map(|e| e.id)
-            .collect();
-        self.event(
-            host,
-            Event::Effects {
-                player: p.uuid,
-                effects,
-            },
-        );
-        let sprint = host
-            .player_stat(p.uuid, "minecraft:custom", "minecraft:sprint_one_cm")
-            .unwrap_or(0);
-        let base = self
-            .server
-            .try_lock()
-            .ok()
-            .and_then(|s| s.sprint_base.get(&p.uuid).copied())
-            .unwrap_or(0);
-        self.event(
-            host,
-            Event::SprintCm {
-                player: p.uuid,
-                cm: sprint - base,
-            },
-        );
+        // `BrushableBlockEntityMixin`: a suspicious block brushed clean.
+        if c.used
+            && c.block.is_some()
+            && c.tool.is_some_and(|t| &*t.item == "minecraft:brush")
+            && let Some(player) = c.player
+        {
+            self.did(host, player, Deed::Brush);
+        }
+    }
+
+    fn entity_join_level(&self, _host: &mut dyn Host, event: &mut EntityJoinLevelEvent<'_>) -> Flow {
+        if event.kind != "minecraft:item" || event.loaded_from_disk {
+            return Flow::Continue;
+        }
+        let now = self.now.load(Ordering::Relaxed);
+        let owner = self.death_drops.lock().ok().and_then(|d| {
+            d.iter()
+                .find(|(dim, at, _, t)| {
+                    now - t <= 1 && dim == event.dimension && (0..3).all(|i| (at[i] - event.pos[i]).abs() < 1.5)
+                })
+                .map(|(_, _, owner, _)| *owner)
+        });
+        if let (Some(owner), Ok(mut d)) = (owner, self.dropped.lock()) {
+            d.insert(event.entity, owner);
+        }
+        Flow::Continue
+    }
+
+    /// `SummonedEntityCriterionMixin`: every player near a Copper Golem as it is built.
+    fn mob_spawned(&self, host: &mut dyn Host, event: &mut MobSpawnedEvent<'_>) {
+        if event.kind != "minecraft:copper_golem" || event.natural {
+            return;
+        }
+        for p in online(host) {
+            let d = [
+                p.position[0] - event.pos[0],
+                p.position[1] - event.pos[1],
+                p.position[2] - event.pos[2],
+            ];
+            if p.dimension == event.dimension
+                && d[0].abs() <= 5.25
+                && d[2].abs() <= 5.25
+                && (-6.8..=6.0).contains(&d[1])
+            {
+                self.did(host, p.uuid, Deed::ConstructCopperGolem);
+            }
+        }
     }
 
     // ---- the window -------------------------------------------------------------------
@@ -2055,6 +3220,21 @@ mod tests {
         assert!(ran);
         dispatch_tick(&mut host, &mods);
         assert_eq!(host.logged.borrow().as_slice(), ["Player Alex is invalid."]);
+    }
+
+    #[test]
+    fn piglins_barter_as_in_1_16() {
+        let mods = mods();
+        let mut table = serde_json::json!({"pools": []});
+        dispatch_loot_table_load(&mods, "minecraft:gameplay/piglin_bartering", &mut table);
+        let entries = table["pools"][0]["entries"].as_array().unwrap();
+        assert_eq!(entries.len(), 17);
+        let weights: i64 = entries.iter().map(|e| e["weight"].as_i64().unwrap()).sum();
+        assert_eq!(weights, 423);
+        assert_eq!(table["random_sequence"], "minecraft:gameplay/piglin_bartering");
+        let mut other = serde_json::json!({"pools": []});
+        dispatch_loot_table_load(&mods, "minecraft:entities/zombie", &mut other);
+        assert_eq!(other, serde_json::json!({"pools": []}));
     }
 
     #[test]

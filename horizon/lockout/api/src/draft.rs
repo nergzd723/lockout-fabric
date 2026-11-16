@@ -425,6 +425,7 @@ impl Draft {
             out.push(Action::Sound {
                 player: s.uuid,
                 sound: "minecraft:block.note_block.pling",
+                category: "master",
                 volume: 0.6,
                 pitch: if timed_out { 0.8 } else { 1.6 },
             });

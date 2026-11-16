@@ -53,13 +53,15 @@ fn inside(m: (i32, i32), r: [i32; 4]) -> bool {
     m.0 >= r[0] && m.0 < r[0] + r[2] && m.1 >= r[1] && m.1 < r[1] + r[3]
 }
 
+/// A vanilla `Button`: its sprite (`gui_nine_slice` takes the atlas key, `gui/sprites/...`)
+/// and its centred label, grey while inactive.
 fn button(p: &mut Painter<'_>, rect: [i32; 4], label: &str, active: bool, mouse: (i32, i32)) {
     let sprite = if !active {
-        "widget/button_disabled"
+        "gui/sprites/widget/button_disabled"
     } else if inside(mouse, rect) {
-        "widget/button_highlighted"
+        "gui/sprites/widget/button_highlighted"
     } else {
-        "widget/button"
+        "gui/sprites/widget/button"
     };
     p.host
         .gui_nine_slice(p.batch, sprite, rect.map(|v| v as f32), 0xFFFF_FFFF);
@@ -76,9 +78,9 @@ fn button(p: &mut Painter<'_>, rect: [i32; 4], label: &str, active: bool, mouse:
 
 fn text_field(p: &mut Painter<'_>, rect: [i32; 4], value: &str, placeholder: &str, focused: bool, tick: u64) {
     let sprite = if focused {
-        "widget/text_field_highlighted"
+        "gui/sprites/widget/text_field_highlighted"
     } else {
-        "widget/text_field"
+        "gui/sprites/widget/text_field"
     };
     p.host
         .gui_nine_slice(p.batch, sprite, rect.map(|v| v as f32), 0xFFFF_FFFF);

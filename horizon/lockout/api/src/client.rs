@@ -471,9 +471,8 @@ pub fn tick(c: &mut Client, host: &mut dyn Host) {
                 .and_then(|e| e.player_name)
         });
     }
-    if let Some(d) = &mut c.draft {
-        d.ticks_left = (d.ticks_left - 1).max(0);
-    }
+    // The draft's timer moves only with the server's state, once a second (`DraftSession`
+    // sends it every 20 ticks), as the Java client's does.
 }
 
 /// The resources reloaded: the atlas has to go up again.

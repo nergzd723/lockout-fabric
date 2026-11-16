@@ -31,6 +31,8 @@ Horizon launcher:
 horizon-launcher mods add-github https://github.com/nergzd723/lockout-fabric --trust-native-code
 ```
 
+Both versions get every change; [PARITY.md](PARITY.md) records how they're kept in step and where they differ.
+
 # Commands
 Create teams using the vanilla `/team` command:
 - `/team add <team name>` - Create a team
@@ -41,7 +43,7 @@ Chat with your team:
 - `/chat team`
 
 Change the board position:
-- `/BoardPosition <left/right>` - changes the position of the board. If you select left, board will be hidden when you enable debug hud (F3).
+- `/BoardPosition <left/right/hidden>` - changes the position of the board. If you select left, board will be hidden when you enable debug hud (F3). `hidden` doesn't draw it at all.
 
 Change the board size:
 - `/SetBoardSize <size>` - Between 3 (3x3) and 7 (7x7), default is 5 (5x5)
@@ -56,6 +58,9 @@ Start a Lockout match:
 Start a Blackout match:
 - `/blackout team <team name>`
 - `/blackout players <player name> <player name> ...`
+
+Stop a match or a draft:
+- `/lockout cancel` (or `/blackout cancel`) - ends the draft, or the running match with no winner, and puts everyone back in survival.
 
 # Draft
 

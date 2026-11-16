@@ -1,3 +1,10 @@
+## Unreleased
+- `/lockout cancel` and `/blackout cancel`: end a draft, or a running match with no winner (everyone goes back to
+  survival). Before, a started match couldn't be stopped.
+- `/BoardPosition hidden` keeps the board off the screen; `left` or `right` shows it again.
+- A Horizon port lives in `horizon/`, playable with Fabric clients and servers; the Fabric mod and the port now get
+  every change together (`PARITY.md`). Releases carry `lockout-<version>.hnmod` beside the jar.
+
 ## Lockout v0.10.4
 - Added 18 goals:
     - Visit 10 Unique Biomes, Visit 15 Unique Biomes (Overworld biomes, counted per team)

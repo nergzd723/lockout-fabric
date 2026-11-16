@@ -1,6 +1,7 @@
 name: Release
 
-# Builds the mod and publishes a GitHub release with the jar.
+# Builds the mod and publishes a GitHub release with the jar and the Horizon port's .hnmod
+# (what `horizon-launcher mods add-github` installs from the latest release).
 # Runs when a version tag (e.g. v0.10.0) is pushed, or manually from the Actions tab,
 # in which case the tag is created from mod_version in gradle.properties.
 on:
@@ -28,6 +29,13 @@ jobs:
       - name: Build
         run: ./gradlew build
 
+      # Fails the release if the Horizon port's version, pin or goals differ from the Java mod's.
+      - name: Java and Horizon in step
+        run: python3 -I horizon/tools/check_sync.py
+
+      - name: Pack the Horizon mod
+        run: python3 -I horizon/tools/pack_hnmod.py horizon/lockout "lockout-$(grep '^mod_version=' gradle.properties | cut -d= -f2).hnmod"
+
       - name: Version and release notes
         id: version
         run: |
@@ -35,6 +43,9 @@ jobs:
           echo "minecraft=$(grep '^minecraft_version=' gradle.properties | cut -d= -f2)" >> "$GITHUB_OUTPUT"
           # The first "## " section of changelog.md is the release being published.
           awk '/^## /{n++} n==1' changelog.md > release-notes.md
+          # An "## Unreleased" section is renamed to the version when mod_version is bumped.
+          tag=$(grep '^mod_version=' gradle.properties | cut -d= -f2)
+          head -1 release-notes.md | grep -qx "## Lockout v$tag" || { echo "changelog.md's first section isn't Lockout v$tag"; exit 1; }
 
       - uses: softprops/action-gh-release@v2
         with:
@@ -42,4 +53,6 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: Lockout ${{ steps.version.outputs.tag }} (Minecraft ${{ steps.version.outputs.minecraft }})
           body_path: release-notes.md
-          files: build/libs/lockout-fabric-*.jar
+          files: |
+            build/libs/lockout-fabric-*.jar
+            lockout-*.hnmod

@@ -1,0 +1,71 @@
+name: Check
+
+# Keeps the Fabric mod and the Horizon port (horizon/) in step: see horizon/PARITY.md.
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    name: Java and Horizon in step
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # goals.json matches the Java goals, one version everywhere, the bundles pack.
+      - run: python3 -I horizon/tools/check_sync.py
+
+  java:
+    name: Fabric mod builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew build
+
+  horizon:
+    name: Horizon port builds and passes its tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: lockout-fabric
+      - name: The Horizon commit the mod pins
+        id: pin
+        run: echo "rev=$(sed -n 's/^horizon_revision = "\(.*\)"/\1/p' lockout-fabric/horizon/lockout/horizon-mixin.toml)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          repository: horizon-rust/horizon
+          ref: ${{ steps.pin.outputs.rev }}
+          path: horizon
+      - name: Rust and the ALSA and udev headers the client links against
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends libasound2-dev libudev-dev
+          rustup toolchain install stable --profile minimal
+      # The same harness as horizon/README.md's "Tests" and "On your own Horizon checkout".
+      - name: Add the mod to the Horizon workspace
+        working-directory: horizon
+        run: |
+          cp -r ../lockout-fabric/horizon/dev/lockout-test ../lockout-fabric/horizon/dev/lockout-run .
+          sed -i 's/^members = \[/members = [\n    "lockout-test",\n    "lockout-run",/' Cargo.toml
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: horizon
+          key: ${{ steps.pin.outputs.rev }}
+      - name: Test
+        working-directory: horizon
+        run: cargo test -p mod-lockout
+      - name: The local runner builds
+        working-directory: horizon
+        run: cargo check -p lockout-run

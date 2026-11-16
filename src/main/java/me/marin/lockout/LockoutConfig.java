@@ -83,12 +83,16 @@ public class LockoutConfig {
         @SerializedName("left")
         LEFT,
         @SerializedName("right")
-        RIGHT;
+        RIGHT,
+        /** Not drawn at all (`/BoardPosition hidden`). */
+        @SerializedName("hidden")
+        HIDDEN;
 
         public static BoardPosition match(String boardPosition) {
             return switch (boardPosition) {
                 case "left" -> LEFT;
                 case "right" -> RIGHT;
+                case "hidden" -> HIDDEN;
                 default -> null;
             };
         }

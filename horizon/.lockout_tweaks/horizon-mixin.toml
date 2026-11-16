@@ -42,8 +42,8 @@ helper = "zombie_villagers.rs"
 bindings = [{ name = "difficulty", ty = "Difficulty", value = "$value" }]
 
 # `DebugHudMixin`: the debug screen's left column is Lockout's (version, FPS, C and E,
-# position, facing, heightmaps, biome) and the right one isn't drawn; lines pinned outside
-# the debug screen are hidden too.
+# position, facing, heightmaps, biome, the targeted block, fluid and entity) and the right one
+# isn't drawn; lines pinned outside the debug screen are hidden too.
 [[injection]]
 id = "debug-screen"
 target = "horizon_client::game::debug_keys::Game<'_>::draw_debug_overlay_under"

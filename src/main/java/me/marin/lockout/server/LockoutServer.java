@@ -1,6 +1,7 @@
 package me.marin.lockout.server;
 
 import me.marin.lockout.network.DraftActionPayload;
+import me.marin.lockout.network.EndLockoutPayload;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import me.marin.lockout.*;
@@ -324,6 +325,35 @@ public class LockoutServer {
             return 0;
         }
         cancelDraft();
+        return 1;
+    }
+
+    /**
+     * `/lockout cancel` and `/blackout cancel`: ends a draft, or the running match with no winner (clients end it as
+     * any finished match), and puts every player back in survival. The save is deleted on the next tick, as for a
+     * finished match.
+     */
+    public static int cancelCommand(CommandContext<CommandSourceStack> context) {
+        if (draftSession != null) {
+            cancelDraft();
+            return 1;
+        }
+        if (!Lockout.isLockoutRunning(lockout)) {
+            context.getSource().sendFailure(Component.literal("No match or draft is running."));
+            return 0;
+        }
+        MatchPause.cancel(server);
+        gameStartRunnables.clear();
+        lockout.setRunning(false);
+
+        var payload = new EndLockoutPayload(new int[0], System.currentTimeMillis());
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            ServerPlayNetworking.send(player, payload);
+        }
+        server.getPlayerList().broadcastSystemMessage(Component.literal("The match was cancelled.").withStyle(ChatFormatting.RED), false);
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            player.setGameMode(GameType.SURVIVAL);
+        }
         return 1;
     }
 

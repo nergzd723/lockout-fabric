@@ -6,6 +6,8 @@ Fabric client and a Horizon client show the same board. Run it after a goal is
 added or changed on the Java side:
 
     python3 horizon/tools/extract_goals.py
+
+With --check it writes nothing and fails when goals.json is out of date (CI).
 """
 import json
 import re
@@ -550,8 +552,16 @@ def main():
         g["goals"] = [types[x] for x in g["goals"]]
         if "require_predecessor" in g:
             g["require_predecessor"] = [types[x] for x in g["require_predecessor"]]
+    text = json.dumps({"goals": goals, "groups": groups_out}, indent=1) + "\n"
+    if "--check" in sys.argv[1:]:
+        if not OUT.is_file() or OUT.read_text() != text:
+            raise SystemExit(
+                f"{OUT.relative_to(ROOT)} is out of date with the Java goals: run python3 horizon/tools/extract_goals.py"
+            )
+        print(f"{len(goals)} goals, {len(groups_out)} groups: {OUT.relative_to(ROOT)} is up to date", file=sys.stderr)
+        return
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps({"goals": goals, "groups": groups_out}, indent=1) + "\n")
+    OUT.write_text(text)
     print(f"{len(goals)} goals, {len(groups_out)} groups -> {OUT.relative_to(ROOT)}", file=sys.stderr)
 
 

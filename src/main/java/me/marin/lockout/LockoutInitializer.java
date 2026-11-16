@@ -83,6 +83,9 @@ public class LockoutInitializer implements ModInitializer {
                     draftNode.addChild(draftCancelNode);
                     draftTeamsNode.addChild(draftTeamListNode);
                     draftPlayersNode.addChild(draftPlayerListNode);
+
+                    // Stops a draft, or a running match with no winner.
+                    commandNode.addChild(Commands.literal("cancel").executes(LockoutServer::cancelCommand).build());
                 }
 
 
@@ -115,6 +118,8 @@ public class LockoutInitializer implements ModInitializer {
                     draftNode.addChild(draftCancelNode);
                     draftTeamNode.addChild(draftTeamNameNode);
                     draftPlayersNode.addChild(draftPlayerListNode);
+
+                    commandNode.addChild(Commands.literal("cancel").executes(LockoutServer::cancelCommand).build());
                 }
             }
 

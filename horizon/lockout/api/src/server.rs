@@ -654,7 +654,7 @@ impl State {
         out
     }
 
-    /// `/lockout cancel` (Horizon only; the Java mod has no way to stop a match): ends a draft,
+    /// `/lockout cancel` and `/blackout cancel` (`LockoutServer.cancelCommand`): ends a draft,
     /// or the running match with no winner (`EndLockoutPayload` with none, so Fabric clients
     /// end it too), and puts every player back in survival. None when nothing runs.
     pub fn cancel_match(&mut self, online: &[Online]) -> Option<Vec<Action>> {

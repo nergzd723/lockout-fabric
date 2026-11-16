@@ -31,6 +31,9 @@ public class Utility {
 
     public static void drawBingoBoard(GuiGraphicsExtractor context) {
         LockoutConfig.BoardPosition boardPosition = LockoutConfig.getInstance().boardPosition;
+        if (boardPosition == LockoutConfig.BoardPosition.HIDDEN) {
+            return;
+        }
 
         // Don't render board if F3 is open with left-side board.
         if (boardPosition == LockoutConfig.BoardPosition.LEFT && Minecraft.getInstance().debugEntries.isOverlayVisible() && Minecraft.getInstance().gui.hud.getDebugOverlay().showDebugScreen()) {

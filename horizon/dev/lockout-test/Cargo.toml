@@ -1,0 +1,18 @@
+# Builds and tests the mod against a Horizon checkout (horizon/README.md, "Tests"): the crate
+# with horizon-client as a path dependency instead of the git one the launcher replaces. Copy this
+# folder into the checkout's root and add "lockout-test" to its workspace members; the path below
+# assumes the two clones sit side by side (~/horizon and ~/lockout-fabric). CI does the same
+# (.github/workflows/check.yml).
+[package]
+name = "mod-lockout"
+version = "0.10.4"
+edition = "2024"
+publish = false
+
+[lib]
+name = "mod_lockout"
+path = "../../lockout-fabric/horizon/lockout/api/src/lib.rs"
+
+[dependencies]
+horizon-client = { path = "../crates/horizon-client" }
+png = "0.18"

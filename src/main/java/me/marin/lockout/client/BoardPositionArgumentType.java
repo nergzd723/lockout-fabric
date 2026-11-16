@@ -15,7 +15,7 @@ import java.util.concurrent.CompletableFuture;
 
 public class BoardPositionArgumentType implements ArgumentType<String> {
 
-    final static List<String> BOARD_POSITIONS = List.of(Constants.BOARD_POSITION_LEFT, Constants.BOARD_POSITION_RIGHT);
+    final static List<String> BOARD_POSITIONS = List.of(Constants.BOARD_POSITION_LEFT, Constants.BOARD_POSITION_RIGHT, Constants.BOARD_POSITION_HIDDEN);
 
     public static BoardPositionArgumentType newInstance() {
         return new BoardPositionArgumentType();

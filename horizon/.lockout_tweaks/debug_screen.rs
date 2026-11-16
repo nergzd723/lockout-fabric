@@ -23,5 +23,19 @@ fn debug_screen(columns: (Vec<String>, Vec<String>), open: bool) -> (Vec<String>
         None => left.extend(first(&|l| l == "Waiting for chunk...")),
     }
     left.extend(first(&|l| l.starts_with("Biome: ")));
+    // What the crosshair is on, each after a blank line: the header, the id and the state's
+    // properties, without the tags (`#...`) vanilla lists after them.
+    for header in ["§nTargeted Block: ", "§nTargeted Fluid: ", "§nTargeted Entity"] {
+        if let Some(at) = lines.iter().position(|l| l.starts_with(header)) {
+            left.push(String::new());
+            left.push(lines[at].clone());
+            left.extend(
+                lines[at + 1..]
+                    .iter()
+                    .take_while(|l| !(l.is_empty() || l.starts_with('#') || l.starts_with("§n")))
+                    .map(|l| (*l).clone()),
+            );
+        }
+    }
     (left, Vec::new())
 }

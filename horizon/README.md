@@ -41,7 +41,8 @@ horizon/
     api/src/wire.rs         the Fabric payloads
   .lockout_tweaks/          injections: raids, zombie villagers, the debug screen
   dev/lockout-run/          runs the mod on a Horizon checkout you build yourself
-  tools/                    regenerate goals.json, names.json and the atlas
+  dev/lockout-test/         builds and tests the mod on a Horizon checkout (CI too)
+  tools/                    regenerate goals.json, names.json and the atlas; check_sync.py, pack_hnmod.py
 ```
 
 Native bundles may only carry `.rs` and `.toml` files, `data/` folders and READMEs, which is why the tools live
@@ -108,17 +109,19 @@ doesn't include `lockout_tweaks`, which needs `horizon-mixins apply` over the ch
 ## Commands
 
 The Fabric mod's, with its permission levels and messages: `/lockout teams|players ...`, `/lockout draft ...`,
-`/blackout team|players ...`, `/blackout draft ...`, `/chat team|local`, `/GiveGoal`, `/SetStartTime`,
-`/SetBoardSize`, `/SetDraftSettings`, `/SetScoutingTime`, `/RemoveCustomBoard`, and on the client `/BoardPosition`
-(`left`, `right`, and Horizon's own `hidden`, which keeps the board off the screen), `/BoardBuilder` and
-`/SetCustomBoard`. Hold **B** for the board (`key.lockout.open_board`).
+`/lockout cancel`, `/blackout team|players ...`, `/blackout draft ...`, `/blackout cancel`, `/chat team|local`,
+`/GiveGoal`, `/SetStartTime`, `/SetBoardSize`, `/SetDraftSettings`, `/SetScoutingTime`, `/RemoveCustomBoard`, and on
+the client `/BoardPosition left|right|hidden`, `/BoardBuilder` and `/SetCustomBoard`. Hold **B** for the board
+(`key.lockout.open_board`).
 
-Horizon adds `/lockout cancel` (or `/blackout cancel`, operators): it ends a draft, or a running match with no
-winner, and puts everyone back in survival. The Fabric mod has no way to stop a match once it started.
+## Same as the Fabric mod, and where it isn't
 
-## What's the same
+Everything the Fabric mod does was compared against its sources, goal by goal, and changes land on both sides
+together. [PARITY.md](../PARITY.md) records it: the shared contract (payloads, version, goals, saves, config), the
+features on each side, the differences Horizon's hook points force and why, the checks CI runs, and the log of
+changes ported.
 
-Everything the Fabric mod does was compared against its sources, goal by goal:
+In short:
 
 - All 338 goals, with the Java classes' conditions: kill credit lasts 100 ticks (a tamed wolf's kill counts for its
   owner), unique goals count what the Java mod counts (only foods for "unique food", honey included; only
@@ -134,56 +137,39 @@ Everything the Fabric mod does was compared against its sources, goal by goal:
   the hidden toasts and debug screen.
 - The vanilla changes: 1.16 bartering, Normal raids on every difficulty, zombies always converting villagers.
 
-## What isn't, and why
-
-Horizon has no hook for some of the moments the Java mixins catch, so the port watches for their result instead.
-The goals complete as on Fabric, but the timing or an edge case can differ:
-
-- A station's output (stonecutter, loom, grindstone, smithing table, cartography table, a brewing stand's bottles)
-  counts when the click on its result slot puts the item in the player's inventory or cursor, seen on the next
-  tick; a result thrown with Q counts without that check. Whether a map was locked is read from the glass pane the
-  player put in the table.
-- Composting, filling a campfire, a chiseled bookshelf or a decorated pot, glow ink on a sign, opening an abandoned
-  camp's loot, an Allay duplicating, wolf armour and a full armour stand are read from the block or mob the tick
-  after the click.
-- A snowball or egg counts when it hits the player (Java: when it touches them). A fall off vines is read from the
-  death message. A Copper Golem counts for everyone within 5 blocks of a Copper Golem that didn't spawn
-  naturally (spawn eggs too). A bundle of 16 bundles counts while it is held, not on the click that fills it.
-- Damage goals count the hit as Horizon reports it, after the difficulty's scaling (Java counts the amount before
-  it): the same on Normal.
-- The spyglass's line of sight is traced through blocks by name (air, plants, torches... let it through) rather
-  than by collision shape.
-- A teleport through a portal with an ender pearl needs Horizon to report the pearl's cross-dimension teleport.
-- `/chat team` with no team and no match sends a plain line rather than a normal chat message.
-- The client commands answer in the action bar rather than in chat.
-- The board hides while the debug screen (F3) is open on either side; the Java client hides it on the left only,
-  because its debug screen drops the right column, which Horizon's keeps without `lockout_tweaks`.
-- Toasts already on screen when the board arrives stay (Horizon can refuse a toast, not hide one), so on a
-  Lockout server the tutorial's hints are refused from the start.
-
 The mod has been type-checked and unit-tested against Horizon, not yet played in a running Horizon game.
 
 ## Keeping it in step with the Fabric mod
 
-- After a goal changes on the Java side, run `python3 horizon/tools/extract_goals.py` and commit `goals.json`; new
-  goal kinds need a `Trigger` in `goals.rs` and an arm in `rules.rs`.
-- `names.json` comes from the game's client jar: `python3 -I horizon/tools/extract_names.py <client.jar>`.
-- `wire::LOCKOUT_VERSION` must equal `mod_version` in `gradle.properties`: both sides refuse another version.
-- `mods add-github` on the repository installs its latest GitHub release's `.hnmod`, and a release without one
-  falls back to its tag's source, which must then hold `horizon/lockout`. So attach `lockout-<version>.hnmod` to
-  every release, beside the Fabric jar. The launcher's packing is reproduced by zipping `horizon-native.json`
-  (schema 1, id, version, game `26.3`, the pinned `horizon` and `mixins` commits) with the bundle's files under
-  `mixins/lockout/`; check it with Horizon's `cargo horizon-mod check <file>`.
+[PARITY.md](../PARITY.md), "Making a change", has the checklist. The tools:
+
+- `python3 -I horizon/tools/check_sync.py` checks what CI checks: `goals.json` up to date, one version everywhere,
+  the same Horizon pin in both bundles, and both pack.
+- `python3 -I horizon/tools/extract_goals.py` regenerates `goals.json` from the Java goals.
+- `python3 -I horizon/tools/extract_names.py <client.jar>` regenerates `names.json` from the game's client jar.
+- `python3 -I horizon/tools/pack_hnmod.py horizon/lockout lockout-<version>.hnmod` packs the mod as the launcher
+  does; the release workflow attaches it to every release, since `mods add-github` on the repository installs its
+  latest release's `.hnmod` (a release without one falls back to its tag's source). Check one with Horizon's
+  `cargo horizon-mod check <file>`.
 
 ## Tests
 
 The crate's tests cover the payload encoding, the goal table, board generation, the rules (tooltips, messages,
-team progress), saving, drafts and the hooks (through Horizon's own `dispatch_*` functions). They need a Horizon
-checkout to build against: add the crate to that checkout's workspace with `horizon-client` as a path dependency,
-then
+team progress), saving, drafts and the hooks (through Horizon's own `dispatch_*` functions). They build against a
+Horizon checkout at the pinned commit, through `horizon/dev/lockout-test` (the crate with `horizon-client` as a path
+dependency). With the two clones side by side, as for `lockout-run`:
+
+```bash
+cp -r ~/lockout-fabric/horizon/dev/lockout-test ~/horizon/
+```
+
+```bash
+cd ~/horizon && sed -i 's/^members = \[/members = [\n    "lockout-test",/' Cargo.toml
+```
 
 ```bash
 cargo test -p mod-lockout
 ```
 
-They were run against horizon-rust/horizon `4626921895df51521be64d485ee763412de2917c`.
+CI runs them the same way on every push (`.github/workflows/check.yml`), against horizon-rust/horizon
+`4626921895df51521be64d485ee763412de2917c`.

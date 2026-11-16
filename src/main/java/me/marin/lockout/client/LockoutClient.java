@@ -177,7 +177,11 @@ public class LockoutClient implements ClientModInitializer {
                     LockoutConfig.getInstance().boardPosition = boardPosition;
                     LockoutConfig.save();
 
-                    context.getSource().sendFeedback(Component.literal("Updated board position." + (boardPosition == LockoutConfig.BoardPosition.LEFT ? " Note: Opening debug hud (F3) will hide the board." : "")));
+                    if (boardPosition == LockoutConfig.BoardPosition.HIDDEN) {
+                        context.getSource().sendFeedback(Component.literal("Board hidden. /BoardPosition left or right shows it again."));
+                    } else {
+                        context.getSource().sendFeedback(Component.literal("Updated board position." + (boardPosition == LockoutConfig.BoardPosition.LEFT ? " Note: Opening debug hud (F3) will hide the board." : "")));
+                    }
 
                     return 1;
                 }).build();

@@ -89,7 +89,7 @@ pub enum BoardPosition {
     Left,
     #[default]
     Right,
-    /// Not drawn (`/BoardPosition hidden`, Horizon only).
+    /// Not drawn (`/BoardPosition hidden`, `BoardPosition.HIDDEN`).
     Hidden,
 }
 

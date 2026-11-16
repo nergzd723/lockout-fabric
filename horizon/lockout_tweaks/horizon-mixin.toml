@@ -1,0 +1,54 @@
+# Lockout's changes to vanilla, as the Fabric mod's mixins make them. A bundle of its own:
+# these hook Horizon's functions by name (not catalog hook points), so if a Horizon release
+# renames one, the launcher leaves this bundle out and Lockout itself still builds.
+# Made and checked on horizon-rust/horizon 4626921895df51521be64d485ee763412de2917c.
+[mod]
+id = "lockout_tweaks"
+version = "0.10.4"
+
+# `RaidMixin.getNumGroups`: every raid has 5 waves, as on Normal, whatever the difficulty.
+[[injection]]
+id = "raid-waves"
+target = "horizon_client_lib::raid::num_groups"
+kind = "OVERWRITE"
+helper = "raid_waves.rs"
+bindings = [{ name = "difficulty", ty = "i32", value = "difficulty" }]
+
+# `RaidMixin.setDifficulty`: a wave's extra raiders are drawn as on Normal.
+[[injection]]
+id = "raid-bonus"
+target = "horizon_client_lib::raid::Raid::compose_wave"
+kind = "MODIFY_ARG"
+selector = "self.wave_count"
+require = 1
+ordinal = 0
+argument = 2
+helper = "raid_bonus.rs"
+bindings = [{ name = "difficulty", ty = "i32", value = "$value" }]
+
+# `ZombieEntityMixin`: a zombie always turns the villager it kills, as on Hard.
+[[injection]]
+id = "zombie-villagers"
+target = "horizon_client::game::zombie_villagers::Game<'_>::zombie_killed"
+kind = "MODIFY_VARIABLE"
+variable = { name = "difficulty", ordinal = 0, at = "STORE" }
+require = 1
+ordinal = 0
+helper = "zombie_villagers.rs"
+bindings = [{ name = "difficulty", ty = "Difficulty", value = "$value" }]
+
+# `DebugHudMixin`: the debug screen's left column is Lockout's (version, FPS, C and E,
+# position, facing, heightmaps, biome) and the right one isn't drawn; lines pinned outside
+# the debug screen are hidden too.
+[[injection]]
+id = "debug-screen"
+target = "horizon_client::game::debug_keys::Game<'_>::draw_debug_overlay_under"
+kind = "MODIFY_EXPRESSION_VALUE"
+selector = "d.columns(&footer)"
+require = 1
+ordinal = 0
+helper = "debug_screen.rs"
+bindings = [
+    { name = "columns", ty = "(Vec<String>, Vec<String>)", value = "$value" },
+    { name = "open", ty = "bool", value = "self.debug" },
+]

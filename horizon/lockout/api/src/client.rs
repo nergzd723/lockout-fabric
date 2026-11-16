@@ -94,6 +94,9 @@ pub enum BoardPosition {
 #[derive(Debug, Default)]
 pub struct Client {
     pub board: Option<Board>,
+    /// The board was read from this process's own server (single player, a LAN host) for
+    /// want of a payload; it is read again each frame until one comes.
+    pub from_local: bool,
     pub tooltips: HashMap<String, String>,
     pub version_mismatch: Option<String>,
     pub draft: Option<DraftView>,
@@ -324,6 +327,9 @@ pub fn packet(c: &mut Client, host: &mut dyn Host, channel: &str, data: &[u8]) {
     let Some(Ok(payload)) = Payload::decode(channel, data) else {
         return;
     };
+    if matches!(payload, Payload::GoalsTeams { .. }) {
+        c.from_local = false;
+    }
     match &payload {
         Payload::Version { version } => {
             let channels: Vec<&str> = wire::SERVERBOUND.iter().chain(wire::CLIENTBOUND).copied().collect();

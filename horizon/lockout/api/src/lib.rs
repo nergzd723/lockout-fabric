@@ -221,7 +221,7 @@ impl Lockout {
                         send(host, p.uuid, &payload);
                     }
                 }
-                Action::Freeze { player, on, .. } if !in_tick => {
+                Action::Freeze { player, modifier, on } if !in_tick => {
                     // Damage is refused at once; the movement freeze waits for the tick.
                     if let Ok(mut f) = self.frozen.lock() {
                         if on {
@@ -230,11 +230,7 @@ impl Lockout {
                             f.remove(&player)
                         };
                     }
-                    later.push(Action::Freeze {
-                        player,
-                        modifier: "",
-                        on,
-                    });
+                    later.push(Action::Freeze { player, modifier, on });
                 }
                 other if !in_tick => later.push(other),
                 Action::Tell { player, spans } => {
@@ -799,7 +795,7 @@ impl Lockout {
                 .iter()
                 .find(|p| p.uuid == uuid)
                 .is_some_and(|p| p.address.is_empty() || p.address.starts_with("local"));
-            if local && self.local_answered.load(Ordering::Relaxed) || local {
+            if local {
                 continue;
             }
             host.kick(
@@ -1851,7 +1847,7 @@ impl Hooks for Lockout {
     fn gui_render_post(&self, host: &dyn Host, event: &mut GuiRenderPostEvent<'_>) {
         let Ok(mut c) = self.client.lock() else { return };
         if !event.gui_hidden {
-            if c.board.is_some() {
+            if c.board.is_some() && !c.from_local {
                 client::draw_hud(&mut c, host, event.batch);
             } else {
                 // Single player and a LAN host run the match in this process: draw it from
@@ -1863,6 +1859,7 @@ impl Hooks for Lockout {
                     .and_then(|s| s.game.as_ref().map(|m| (m.goals_teams_payload(), m.ticks, m.started)));
                 if let Some((payload, ticks, started)) = local {
                     c.apply(payload);
+                    c.from_local = true;
                     c.apply(Payload::UpdateTimer { ticks });
                     if started {
                         c.apply(Payload::Start);

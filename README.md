@@ -24,7 +24,12 @@ After world generation, Lockout will search for biomes and structures, and the s
 
 ## Horizon
 A Rust port for [Horizon](https://github.com/horizon-rust/horizon) lives in [`horizon/`](horizon/README.md). It speaks
-this mod's network payloads, so Horizon and Fabric clients and servers can play together.
+this mod's network payloads, so Horizon and Fabric clients and servers can play together. Install it with the
+Horizon launcher:
+
+```
+horizon-launcher mods add-github https://github.com/nergzd723/lockout-fabric --trust-native-code
+```
 
 # Commands
 Create teams using the vanilla `/team` command:

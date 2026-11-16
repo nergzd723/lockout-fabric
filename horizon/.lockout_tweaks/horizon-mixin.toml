@@ -1,10 +1,14 @@
 # Lockout's changes to vanilla, as the Fabric mod's mixins make them. A bundle of its own:
-# these hook Horizon's functions by name (not catalog hook points), so if a Horizon release
-# renames one, the launcher leaves this bundle out and Lockout itself still builds.
-# Made and checked on horizon-rust/horizon 4626921895df51521be64d485ee763412de2917c.
+# these hook Horizon's functions by name (not catalog hook points), so if one doesn't apply,
+# the launcher leaves this bundle out and Lockout itself still builds. Its folder starts with
+# a dot so that `mods add-github` on the repository finds Lockout alone; build it with
+#   horizon-launcher native-build <this folder> --instance <instance> --trust-native-code
 [mod]
 id = "lockout_tweaks"
 version = "0.10.4"
+
+[compatibility]
+horizon_revision = "4626921895df51521be64d485ee763412de2917c"
 
 # `RaidMixin.getNumGroups`: every raid has 5 waves, as on Normal, whatever the difficulty.
 [[injection]]

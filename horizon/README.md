@@ -39,7 +39,7 @@ horizon/
     api/src/client.rs       the board on screen, the client commands
     api/src/screens.rs      the board, draft and Board Builder screens
     api/src/wire.rs         the Fabric payloads
-  lockout_tweaks/           injections: raids, zombie villagers, the debug screen
+  .lockout_tweaks/          injections: raids, zombie villagers, the debug screen
   dev/lockout-run/          runs the mod on a Horizon checkout you build yourself
   tools/                    regenerate goals.json, names.json and the atlas
 ```
@@ -49,29 +49,40 @@ outside `lockout/`.
 
 ## Install
 
-You need the Horizon launcher and a Horizon built from `main` at or after
-`4626921895df51521be64d485ee763412de2917c` (native hook API 645). The 2026-11-13 Nightly (API 415) is too old: it
-lacks hooks the mod uses. Neither bundle is pinned to a commit, so they build on the instance's own Horizon.
+With the Horizon launcher (0.2.69, the current release) and any Horizon installed in it:
 
 ```bash
-horizon-launcher native-build horizon/lockout --instance <instance> --trust-native-code
+horizon-launcher mods add-github https://github.com/nergzd723/lockout-fabric --trust-native-code
 ```
 
-```bash
-horizon-launcher native-build horizon/lockout_tweaks --instance <instance> --trust-native-code
-```
+then build the instance's native game from the Mods page (or `horizon-launcher native-build --trust-native-code`). The
+mod pins the Horizon commit it was made and tested on (`4626921895df51521be64d485ee763412de2917c`, hook API 645,
+launcher 0.2.69's), so the launcher builds the game from that commit's source whatever version the instance plays.
+The first build downloads Rust and compiles the game: 20 to 30 minutes.
 
 Native mods run unsandboxed with your rights; read the code before you build it. The same build serves single
 player, LAN hosting and a dedicated server (`--server-output` for a standalone server).
+
+`lockout_tweaks` (raids, zombie villagers, the debug screen) is a bundle of its own in `horizon/.lockout_tweaks/`, so
+that the link above finds Lockout alone. From a clone of this repository:
+
+```bash
+horizon-launcher native-build horizon/.lockout_tweaks --instance <instance> --trust-native-code
+```
+
+Horizon's `main` moved to a new mod SDK (`horizon-mod-api`) on 2026-11-16, after launcher 0.2.69: launchers built
+from it refuse mods that depend on `horizon-client`, as this one does. Until the mod is ported to that SDK, stay on
+launcher 0.2.69 (`HORIZON_LAUNCHER_NO_SELF_UPDATE=1` keeps it from updating itself).
 
 ### On your own Horizon checkout
 
 The launcher builds mods from GitHub's copy of a Horizon commit, never from a local checkout. To play the mod on a
 checkout you build yourself, do by hand what the launcher's generated game does: one package that links the mod and
-starts the game with its hooks (its `main.rs` mirrors the one the launcher generates). Check the checkout's hook API first (645 or later):
+starts the game with its hooks (its `main.rs` mirrors the one the launcher generates). The checkout must be at the
+commit the mod pins (`main` from 2026-11-16 on has the new SDK, which this doesn't build on):
 
 ```bash
-grep -n "const NATIVE_HOOKS_API" crates/horizon-client/src/game/native_hooks.rs
+cd ~/horizon && git fetch origin && git checkout 4626921895df51521be64d485ee763412de2917c
 ```
 
 `horizon/dev/lockout-run/` is that package. With the two clones side by side (`~/horizon` and `~/lockout-fabric`;

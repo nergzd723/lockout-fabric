@@ -1,13 +1,16 @@
 # Lockout for Horizon: a native trait mod (docs/native-mods.md, "Trait mods").
-# Build it into an instance with:
+# Install it with:
+#   horizon-launcher mods add-github https://github.com/nergzd723/lockout-fabric --trust-native-code
+# or build this folder into an instance:
 #   horizon-launcher native-build <this folder> --instance <instance> --trust-native-code
-#
-# It uses only catalog hook points and Host helpers, so it is not pinned: it builds on the
-# installed Horizon when that has NATIVE_HOOKS_API 645 or later. It was made and tested on
-# horizon-rust/horizon 4626921895df51521be64d485ee763412de2917c.
 [mod]
 id = "lockout"
 version = "0.10.4"
+
+# The Horizon commit it was made and tested on (launcher 0.2.69's, hook API 645). The
+# launcher builds the game from this commit's source, whatever version the instance plays.
+[compatibility]
+horizon_revision = "4626921895df51521be64d485ee763412de2917c"
 
 [api]
 path = "api"

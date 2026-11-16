@@ -2,9 +2,13 @@
 //! payloads every client is sent. Nothing here touches the host: hooks turn what they hear
 //! into an [`Event`], [`State`] answers with [`Action`]s, and `lib.rs` carries them out once
 //! the state's lock is released, so a host call that fires another hook can't deadlock.
+use crate::board::World;
+use crate::compass::Compass;
+use crate::draft::{Draft, DraftSettings};
 use crate::goals::{self, DATA_NONE, HOSTILE, LEATHER_RGB, OpponentEvent, Trigger};
+use crate::pause::{self, Pause, Present};
 use crate::wire::{self, COLOR_ORDER, Payload, TEAM_COLORS, WireGoal, WireTeam};
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 pub const MIN_BOARD_SIZE: usize = 3;
 pub const MAX_BOARD_SIZE: usize = 7;
@@ -12,18 +16,61 @@ pub const MAX_BOARD_SIZE: usize = 7;
 const GREEN: u32 = 0x55FF55;
 const RED: u32 = 0xFF5555;
 const GRAY: u32 = 0xAAAAAA;
+const WHITE: u32 = 0xFFFFFF;
+
+/// `§c`: a team colour as a legacy formatting code, as the Java mod's strings carry them.
+pub fn legacy_color(color: usize) -> String {
+    format!("§{}", "0123456789abcdef".as_bytes()[color.min(15)] as char)
+}
+
+/// `A`, `A and B`, `A, B and C`: `Lockout.getWinnerTeamsString`.
+pub fn join_and(names: &[String]) -> String {
+    let mut out = String::new();
+    for (i, n) in names.iter().enumerate() {
+        if i > 0 {
+            out.push_str(if i + 1 == names.len() { " and " } else { ", " });
+        }
+        out.push_str(n);
+    }
+    out
+}
+
+/// A run of chat text in one colour (0xRRGGBB): Java's lines mix `ChatFormatting` colours.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Span {
+    pub text: String,
+    pub color: u32,
+    pub italic: bool,
+}
+
+impl Span {
+    pub fn new(text: impl Into<String>, color: u32) -> Self {
+        Self {
+            text: text.into(),
+            color,
+            italic: false,
+        }
+    }
+    pub fn italic(mut self) -> Self {
+        self.italic = true;
+        self
+    }
+}
+
+/// The Java mod saves the running match every 30 seconds.
+const SAVE_INTERVAL_TICKS: i64 = 20 * 30;
 
 /// Something for the host to do.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Action {
     Tell {
         player: u128,
-        text: String,
-        color: u32,
+        spans: Vec<Span>,
     },
-    Broadcast {
-        text: String,
-        color: u32,
+    Broadcast(Vec<Span>),
+    ActionBar {
+        player: u128,
+        spans: Vec<Span>,
     },
     Send {
         player: u128,
@@ -41,20 +88,96 @@ pub enum Action {
     Sound {
         player: u128,
         sound: &'static str,
+        volume: f32,
         pitch: f32,
     },
+    Teleport {
+        player: u128,
+        dimension: String,
+        pos: [f64; 3],
+    },
+    Flight {
+        player: u128,
+        allow: bool,
+        flying: bool,
+    },
+    FlySpeed {
+        player: u128,
+        speed: Option<f32>,
+    },
+    /// Freezes the player in place (movement and jump strength to 0, damage refused), as the
+    /// Java mod's transient attribute modifier `modifier` and `invulnerable` do; `on: false`
+    /// lets them go.
+    Freeze {
+        player: u128,
+        modifier: &'static str,
+        on: bool,
+    },
+    Give {
+        player: u128,
+        item: String,
+    },
+    /// Takes every `item` from the player's inventory.
+    ClearItem {
+        player: u128,
+        item: String,
+    },
+    /// A player-tracking compass, into inventory slot `slot` (41-slot numbering) when given.
+    GiveCompass {
+        player: u128,
+        slot: Option<usize>,
+        name: String,
+    },
+    /// Where the player's tracking compass points; None points it at the world spawn.
+    CompassTarget {
+        player: u128,
+        target: Option<(String, [i32; 3])>,
+    },
+    RenameCompass {
+        player: u128,
+        name: String,
+    },
+    /// Writes the running match to the world's `lockout-match.json`.
+    Save,
+    /// Reads every lockout player's sprint statistic now, so only this match's sprint counts.
+    SnapshotSprint,
+    /// Clears the player for a new match: inventory, effects, health, food, experience,
+    /// fire, statistics and advancements.
+    Reset {
+        player: u128,
+    },
+    DeleteSave,
 }
 
 #[derive(Debug, Clone)]
 pub struct Team {
-    pub name: String,
     pub color: usize,
     pub players: Vec<(u128, String)>,
     pub points: u32,
 }
 
 impl Team {
-    fn wire(&self) -> WireTeam {
+    pub fn new(color: usize, players: Vec<(u128, String)>) -> Self {
+        Self {
+            color,
+            players,
+            points: 0,
+        }
+    }
+
+    /// `LockoutTeam.getDisplayName`: the player for a team of one, else `Team <Colour>`.
+    pub fn display_name(&self) -> String {
+        match self.players.as_slice() {
+            [(_, name)] => name.clone(),
+            _ => format!("Team {}", wire::color_display(TEAM_COLORS[self.color].0)),
+        }
+    }
+
+    pub fn rgb(&self) -> u32 {
+        TEAM_COLORS[self.color].1
+    }
+
+    pub fn wire(&self) -> WireTeam {
         WireTeam {
             color: TEAM_COLORS[self.color].0.to_owned(),
             players: self.players.iter().map(|(_, n)| n.clone()).collect(),
@@ -73,9 +196,9 @@ pub struct Square {
 
 /// A goal's progress for one team: what it has seen, and how much.
 #[derive(Debug, Clone, Default)]
-struct Progress {
-    seen: BTreeSet<String>,
-    count: f64,
+pub(crate) struct Progress {
+    pub(crate) seen: BTreeSet<String>,
+    pub(crate) count: f64,
 }
 
 #[derive(Debug)]
@@ -86,7 +209,7 @@ pub struct Match {
     pub ticks: i64,
     pub started: bool,
     pub running: bool,
-    progress: HashMap<(usize, usize), Progress>,
+    pub(crate) progress: HashMap<(usize, usize), Progress>,
 }
 
 /// An inventory slot's stack, as far as goals look at it.
@@ -331,8 +454,7 @@ pub enum StartRequest {
 pub struct Settings {
     pub board_size: usize,
     pub start_seconds: i64,
-    /// Also put goals that need a biome or structure nearby on random boards.
-    pub located_goals: bool,
+    pub draft: DraftSettings,
 }
 
 impl Default for Settings {
@@ -340,7 +462,7 @@ impl Default for Settings {
         Self {
             board_size: 5,
             start_seconds: 60,
-            located_goals: true,
+            draft: DraftSettings::default(),
         }
     }
 }
@@ -359,14 +481,47 @@ pub struct State {
     /// The sprint statistic each player had at the start, so only this match's sprint counts.
     pub sprint_base: HashMap<u128, i32>,
     pub server_ticks: i64,
+    pub draft: Option<Draft>,
+    /// What was located near spawn; None until the server has looked.
+    pub world: Option<World>,
+    /// Set while a match restored after a restart waits for its players.
+    pub pause: Option<Pause>,
+    pub compass: Option<Compass>,
+    /// Players chatting with their team (`/chat team`).
+    pub team_chat: HashSet<u128>,
+    /// A save exists on disk for the running match.
+    pub saved: bool,
 }
 
-fn tell(player: u128, text: impl Into<String>, color: u32) -> Action {
+/// An online player, as the server's tick reads them.
+#[derive(Debug, Clone)]
+pub struct Online {
+    pub uuid: u128,
+    pub name: String,
+    pub dimension: String,
+    pub position: [f64; 3],
+    pub xp_level: i32,
+}
+
+impl Online {
+    pub fn present(&self) -> Present {
+        Present {
+            uuid: self.uuid,
+            dimension: self.dimension.clone(),
+            position: self.position,
+        }
+    }
+}
+
+pub fn tell(player: u128, text: impl Into<String>, color: u32) -> Action {
     Action::Tell {
         player,
-        text: text.into(),
-        color,
+        spans: vec![Span::new(text, color)],
     }
+}
+
+fn broadcast(text: impl Into<String>, color: u32) -> Action {
+    Action::Broadcast(vec![Span::new(text, color)])
 }
 
 impl Match {
@@ -397,6 +552,11 @@ impl Match {
 
     pub fn mode_name(&self) -> &'static str {
         if self.teams.len() > 1 { "Lockout" } else { "Blackout" }
+    }
+
+    /// One team of one player: no tracking compass to hand out.
+    pub fn solo_blackout(&self) -> bool {
+        self.teams.len() == 1 && self.teams[0].players.len() == 1
     }
 
     pub fn team_of(&self, player: u128) -> Option<usize> {
@@ -512,7 +672,13 @@ impl Match {
             }
             None => {
                 for (i, t) in self.teams.iter().enumerate() {
-                    lines.push(format!("{}: {}/{}", t.name, value(i).floor(), amount));
+                    lines.push(format!(
+                        "{}{}§r: {}/{}",
+                        legacy_color(t.color),
+                        t.display_name(),
+                        value(i).floor(),
+                        amount
+                    ));
                 }
             }
         }
@@ -594,35 +760,14 @@ impl State {
         m.board[square].completed_by = Some(team);
         m.teams[team].points += 1;
         let id = m.board[square].id.clone();
-        let members: Vec<u128> = m.teams[team].players.iter().map(|(u, _)| *u).collect();
-        let others: Vec<u128> = m
-            .teams
-            .iter()
-            .enumerate()
-            .filter(|(i, _)| *i != team)
-            .flat_map(|(_, t)| t.players.iter().map(|(u, _)| *u))
-            .collect();
         self.announce(team, &message, online, out);
+        // The clients play the completion sounds (`LockoutClient`'s CompleteTaskPayload receiver).
         out.push(Action::SendAll {
             payload: Payload::CompleteTask {
                 goal: id,
                 team: team as i32,
             },
         });
-        for p in members {
-            out.push(Action::Sound {
-                player: p,
-                sound: "minecraft:block.note_block.chime",
-                pitch: 1.0,
-            });
-        }
-        for p in others {
-            out.push(Action::Sound {
-                player: p,
-                sound: "minecraft:entity.guardian.death",
-                pitch: 1.0,
-            });
-        }
         self.evaluate_winner(team, out);
     }
 
@@ -649,20 +794,14 @@ impl State {
         };
         let mut winners = Vec::new();
         if let Some(w) = winner {
-            out.push(Action::Broadcast {
-                text: format!("{} wins.", m.teams[w].name),
-                color: 0xFFFFFF,
-            });
+            out.push(broadcast(format!("{} wins.", m.teams[w].display_name()), WHITE));
             winners.push(w as i32);
             m.running = false;
         } else if m.remaining() == 0 && m.teams.len() > 1 {
             let best = m.teams.iter().map(|t| t.points).max().unwrap_or(0);
             let tied: Vec<usize> = (0..m.teams.len()).filter(|&t| m.teams[t].points == best).collect();
-            let names: Vec<&str> = tied.iter().map(|&t| m.teams[t].name.as_str()).collect();
-            out.push(Action::Broadcast {
-                text: format!("It's a tie! {} win.", names.join(", ")),
-                color: 0xFFFFFF,
-            });
+            let names: Vec<String> = tied.iter().map(|&t| m.teams[t].display_name()).collect();
+            out.push(broadcast(format!("It's a tie! {} win.", join_and(&names)), WHITE));
             winners.extend(tied.iter().map(|&t| t as i32));
             m.running = false;
         }
@@ -676,46 +815,83 @@ impl State {
         }
     }
 
-    /// One server tick: the countdown, the timer, and the "have the most" squares.
-    /// `xp` holds each online player's level, `crafted`'s count comes from the progress.
-    pub fn tick(&mut self, online: &[u128], xp: &HashMap<u128, i32>) -> Vec<Action> {
+    /// One server tick (`EndServerTickEventHandler`): the draft, the pause, the countdown,
+    /// the timer, saving, the compasses and the "have the most" squares.
+    pub fn tick(&mut self, online: &[Online], scouts: &[crate::draft::Scout]) -> Vec<Action> {
         let mut out = Vec::new();
         self.server_ticks += 1;
+        let uuids: Vec<u128> = online.iter().map(|p| p.uuid).collect();
+        if let Some(d) = &mut self.draft {
+            let (actions, outcome) = d.tick(scouts);
+            out.extend(actions);
+            match outcome {
+                crate::draft::DraftOutcome::Running => {}
+                crate::draft::DraftOutcome::Cancelled => self.draft = None,
+                crate::draft::DraftOutcome::Finished { teams, board } => {
+                    self.draft = None;
+                    out.extend(self.start(teams, board, online, &HashMap::new()));
+                    out.push(Action::SnapshotSprint);
+                }
+            }
+        }
+        // A finished (or replaced) match isn't restored after a restart.
+        if self.saved && self.game.as_ref().is_some_and(|m| !m.running) {
+            self.saved = false;
+            out.push(Action::DeleteSave);
+        }
         let Some(m) = &mut self.game else { return out };
         if !m.running {
             return out;
         }
-        m.ticks += 1;
-        if !m.started {
-            if [-60, -40, -20].contains(&m.ticks) {
-                out.push(Action::Broadcast {
-                    text: format!("Starting in {}...", -m.ticks / 20),
-                    color: 0xFFFFFF,
-                });
+        if let Some(p) = &mut self.pause {
+            let present: Vec<Present> = online.iter().map(Online::present).collect();
+            if p.tick(m, &present, &mut out) {
+                self.pause = None;
             }
-            if m.ticks >= 0 {
+            return out;
+        }
+        if !m.started {
+            // `gameStartRunnables`: the countdown lines, then the start.
+            let to_start = -m.ticks;
+            if [60, 40, 20].contains(&to_start) {
+                out.push(broadcast(format!("Starting in {}...", to_start / 20), WHITE));
+            }
+            if to_start <= 0 {
                 m.started = true;
                 out.push(Action::SendAll {
                     payload: Payload::Start,
                 });
                 for t in &m.teams {
                     for (p, _) in &t.players {
-                        out.push(Action::GameMode { player: *p, mode: 0 });
+                        if uuids.contains(p) {
+                            out.push(Action::GameMode { player: *p, mode: 0 });
+                        }
                     }
                 }
-                out.push(Action::Broadcast {
-                    text: format!("{} has begun.", m.mode_name()),
-                    color: 0xFFFFFF,
-                });
+                out.push(broadcast(format!("{} has begun.", m.mode_name()), WHITE));
             }
         }
-        if m.ticks % 20 == 0 {
+        m.ticks += 1;
+        if m.ticks % SAVE_INTERVAL_TICKS == 0 {
+            out.push(Action::Save);
+        }
+        if let Some(c) = &mut self.compass
+            && m.ticks % 10 == 0
+        {
+            let positions: Vec<(u128, String, [f64; 3])> = online
+                .iter()
+                .map(|p| (p.uuid, p.dimension.clone(), p.position))
+                .collect();
+            out.extend(c.update(&positions));
+        }
+        let xp: HashMap<u128, i32> = online.iter().map(|p| (p.uuid, p.xp_level)).collect();
+        self.update_most(&uuids, &xp, &mut out);
+        if let Some(m) = &self.game
+            && m.ticks % 20 == 0
+        {
             out.push(Action::SendAll {
                 payload: Payload::UpdateTimer { ticks: m.ticks },
             });
-            if m.started {
-                self.update_most(online, xp, &mut out);
-            }
         }
         out
     }
@@ -755,7 +931,7 @@ impl State {
                 let name = self
                     .game
                     .as_ref()
-                    .map(|m| format!("{} now has {}.", m.teams[t].name, m.board[i].name))
+                    .map(|m| format!("{} completed {}.", m.teams[t].display_name(), m.board[i].name))
                     .unwrap_or_default();
                 self.complete(i, t, name, online, out);
             }
@@ -842,7 +1018,7 @@ impl State {
                     let name = if matches!(event, Event::Damage { .. })
                         && !matches!(trigger, Trigger::DealDamage { .. } | Trigger::ShootOpponentWithArrow)
                     {
-                        m.teams[team].name.clone()
+                        m.teams[team].display_name()
                     } else {
                         m.player_name(who)
                     };
@@ -899,47 +1075,203 @@ impl State {
 
     /// Starts a match: resets the players (by console commands, run on the next tick),
     /// sends the board and starts the countdown.
+    /// Starts a match (`LockoutServer.startLockout`): resets every player (by console
+    /// commands, run on the next tick), hands out the tracking compasses, sends the board
+    /// and starts the countdown.
     pub fn start(
         &mut self,
         teams: Vec<Team>,
         goals: Vec<(String, String)>,
-        online: &[(u128, String)],
+        online: &[Online],
         sprint: &HashMap<u128, i32>,
     ) -> Vec<Action> {
         let mut out = Vec::new();
-        let start = self.settings.start_seconds.max(5) * 20;
+        if let Some(mut p) = self.pause.take() {
+            p.cancel(&mut out);
+        }
+        let start = self.settings.start_seconds * 20;
         let game = Match::new(teams, goals, start);
         self.last_hurt_by.clear();
         self.sprint_base = sprint.clone();
-        for (uuid, name) in online {
-            for c in [
-                format!("clear {name}"),
-                format!("effect clear {name}"),
-                format!("xp set {name} 0 levels"),
-                format!("xp set {name} 0 points"),
-                format!("advancement revoke {name} everything"),
-                format!("effect give {name} minecraft:instant_health 1 20 true"),
-                format!("effect give {name} minecraft:saturation 1 20 true"),
-                format!("extinguish {name}"),
-            ] {
-                out.push(Action::Command(c));
-            }
-            if game.team_of(*uuid).is_some() {
-                out.push(Action::GameMode { player: *uuid, mode: 2 });
+        for p in online {
+            out.push(Action::Reset { player: p.uuid });
+            if game.team_of(p.uuid).is_some() {
+                out.push(Action::GameMode {
+                    player: p.uuid,
+                    mode: 2,
+                });
             } else {
-                out.push(Action::GameMode { player: *uuid, mode: 3 });
-                out.push(tell(*uuid, "You are spectating this match.", GRAY));
+                out.push(Action::GameMode {
+                    player: p.uuid,
+                    mode: 3,
+                });
+                out.push(Action::Tell {
+                    player: p.uuid,
+                    spans: vec![Span::new("You are spectating this match.", GRAY).italic()],
+                });
             }
         }
+        let compass = Compass::new(&game.teams);
         out.push(Action::Command("time set 0".into()));
-        let ids: Vec<u128> = online.iter().map(|(u, _)| *u).collect();
-        for p in &ids {
-            for payload in game.join_payloads(*p) {
-                out.push(Action::Send { player: *p, payload });
+        for p in online {
+            for payload in game.join_payloads(p.uuid) {
+                out.push(Action::Send {
+                    player: p.uuid,
+                    payload,
+                });
+            }
+            if !game.solo_blackout() && game.team_of(p.uuid).is_some() {
+                out.push(Action::GiveCompass {
+                    player: p.uuid,
+                    slot: None,
+                    name: compass.label(p.uuid),
+                });
             }
         }
+        self.compass = Some(compass);
         self.game = Some(game);
+        out.push(Action::Save);
         out
+    }
+
+    /// Ends a draft in progress, if there is one (`LockoutServer.cancelDraft`).
+    pub fn cancel_draft(&mut self) -> Vec<Action> {
+        self.draft.take().map(|mut d| d.cancel()).unwrap_or_default()
+    }
+
+    /// `/lockout draft` and `/blackout draft` (`LockoutServer.startDraft`): the running match
+    /// stops, drafting players wait in adventure mode and everyone else spectates.
+    pub fn start_draft(
+        &mut self,
+        teams: Vec<Team>,
+        online: &[Online],
+        scouts: &[crate::draft::Scout],
+        seed: u64,
+    ) -> Vec<Action> {
+        let mut out = self.cancel_draft();
+        if let Some(mut p) = self.pause.take() {
+            p.cancel(&mut out);
+        }
+        if let Some(m) = &mut self.game {
+            m.running = false;
+        }
+        for p in online {
+            let drafting = teams.iter().any(|t| t.players.iter().any(|(u, _)| *u == p.uuid));
+            out.push(Action::GameMode {
+                player: p.uuid,
+                mode: if drafting { 2 } else { 3 },
+            });
+        }
+        let world = self.world.clone().unwrap_or_default();
+        let mut draft = Draft::new(
+            teams,
+            self.settings.board_size,
+            self.settings.draft,
+            world,
+            crate::board::Rng::new(seed),
+        );
+        out.extend(draft.start(scouts));
+        self.draft = Some(draft);
+        out
+    }
+
+    /// A drafting player's pick or reroll.
+    pub fn draft_action(
+        &mut self,
+        player: u128,
+        action: i32,
+        online: &[Online],
+        scouts: &[crate::draft::Scout],
+    ) -> Vec<Action> {
+        let Some(d) = &mut self.draft else { return Vec::new() };
+        let (mut out, outcome) = d.action(player, action, scouts);
+        if let crate::draft::DraftOutcome::Finished { teams, board } = outcome {
+            self.draft = None;
+            out.extend(self.start(teams, board, online, &HashMap::new()));
+            out.push(Action::SnapshotSprint);
+        }
+        out
+    }
+
+    /// Whether the player is frozen (scouting or paused), and so can't be hurt.
+    pub fn frozen(&self, player: u128) -> bool {
+        self.draft.as_ref().is_some_and(|d| d.is_scouting(player))
+            || self.pause.as_ref().is_some_and(|p| p.is_frozen(player))
+    }
+
+    /// Restores a saved match (`LockoutServer.restoreSavedMatch`): paused until every player
+    /// is back.
+    pub fn restore(&mut self, game: Match) {
+        self.compass = Some(Compass::new(&game.teams));
+        self.game = Some(game);
+        self.pause = Some(Pause::new());
+        self.saved = true;
+    }
+
+    /// A player joined (`LockoutVersionPayload`'s receiver on the Fabric server): their game
+    /// mode, tooltips, the board and the timer.
+    pub fn join(&self, player: u128, online: &[Online]) -> Vec<Action> {
+        let mut out = Vec::new();
+        let Some(m) = &self.game else { return out };
+        if !m.running {
+            return out;
+        }
+        if m.team_of(player).is_some() {
+            if self.pause.is_some() {
+                // Frozen by the pause until everyone is back.
+                out.push(Action::GameMode { player, mode: 2 });
+                let present: Vec<Present> = online.iter().map(Online::present).collect();
+                let missing = pause::missing(m, &present);
+                if !missing.is_empty()
+                    && let Action::Broadcast(spans) = pause::waiting_message(&missing)
+                {
+                    out.push(Action::Tell { player, spans });
+                }
+            } else {
+                out.push(Action::GameMode { player, mode: 0 });
+            }
+        } else {
+            out.push(Action::GameMode { player, mode: 3 });
+            out.push(Action::Tell {
+                player,
+                spans: vec![Span::new("You are spectating this match.", GRAY).italic()],
+            });
+        }
+        for payload in m.join_payloads(player) {
+            out.push(Action::Send { player, payload });
+        }
+        out
+    }
+
+    /// `/GiveGoal <player> <goal number>`: the goal goes to that player's team, whoever held it.
+    pub fn give_goal(
+        &mut self,
+        player: Option<(u128, String)>,
+        number: usize,
+        online: &[u128],
+    ) -> Result<(String, Vec<Action>), String> {
+        let Some(m) = &self.game else {
+            return Err("There's no active lockout match.".into());
+        };
+        if !m.running {
+            return Err("There's no active lockout match.".into());
+        }
+        let Some((uuid, name)) = player else {
+            return Err("Invalid target.".into());
+        };
+        let Some(team) = m.team_of(uuid) else {
+            return Err(format!("Player {name} is not playing Lockout."));
+        };
+        if number == 0 || number > m.board.len() {
+            return Err("Goal number does not exist on the board.".into());
+        }
+        let square = number - 1;
+        let reply = format!("Gave {name} goal \"{}\".", m.board[square].name);
+        let message = format!("{} completed {}.", m.player_name(uuid), m.board[square].name);
+        let mut out = Vec::new();
+        self.clear(square, &mut out);
+        self.complete(square, team, message, online, &mut out);
+        Ok((reply, out))
     }
 }
 
@@ -1221,36 +1553,104 @@ fn evaluate(trigger: &Trigger, event: &Event, progress: &mut Progress, teams: us
     }
 }
 
-/// Teams from vanilla team names and the members `/team list` gave for each. `color` is
-/// the team's colour name when the server's teams have one.
+/// The teams, and the vanilla teams (name, colour) whose colour was set.
+pub type TeamsAndRecolors = (Vec<Team>, Vec<(String, String)>);
+
+/// A vanilla team as `/team list` describes it: None when there is no such team.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ListedTeam {
+    pub name: String,
+    pub color: Option<String>,
+    pub members: Vec<String>,
+}
+
+/// `/lockout teams` and `/blackout team` (`LockoutServer.parseArgumentsIntoTeams`): the
+/// teams, and the vanilla teams whose colour had to be set because they had none or shared
+/// one (`team modify <name> color <colour>`, as the Java mod sets it).
 pub fn teams_from(
-    listed: Vec<(String, Option<String>, Vec<String>)>,
+    names: &[String],
+    listed: &[Option<ListedTeam>],
     online: &[(u128, String)],
-) -> Result<Vec<Team>, String> {
-    let mut teams = Vec::new();
-    for (i, (name, color, members)) in listed.into_iter().enumerate() {
-        let players: Vec<(u128, String)> = members
-            .iter()
-            .filter_map(|m| online.iter().find(|(_, n)| n.eq_ignore_ascii_case(m)).cloned())
-            .collect();
-        if players.is_empty() {
-            return Err(format!("Team {name} has no players online."));
+    blackout: bool,
+) -> Result<TeamsAndRecolors, String> {
+    if blackout {
+        if names.is_empty() {
+            return Err("Not enough teams listed.".into());
         }
-        let color = color
-            .and_then(|c| TEAM_COLORS.iter().position(|(n, _)| *n == c))
-            .unwrap_or(COLOR_ORDER[i % COLOR_ORDER.len()]);
-        teams.push(Team {
-            name,
-            color,
-            players,
-            points: 0,
-        });
+        if names.len() > 1 {
+            return Err("Only one team can play Blackout.".into());
+        }
+    } else {
+        if names.len() < 2 {
+            return Err("Not enough teams listed. Make sure you separate team names with spaces.".into());
+        }
+        if names.len() > 16 {
+            return Err("Too many teams listed.".into());
+        }
     }
-    Ok(teams)
+    let find = |m: &str| online.iter().find(|(_, n)| n.eq_ignore_ascii_case(m)).cloned();
+    let mut found = Vec::new();
+    for (name, team) in names.iter().zip(listed) {
+        let Some(team) = team else {
+            return Err(format!("Team {name} is invalid."));
+        };
+        for m in &team.members {
+            if find(m).is_none() {
+                return Err(format!(
+                    "Player {m} on team {name} is invalid. Remove them from the team and try again."
+                ));
+            }
+        }
+        found.push(team);
+    }
+    let mut teams: Vec<Team> = Vec::new();
+    let mut recolored = Vec::new();
+    for team in found {
+        if team.members.is_empty() {
+            return Err(format!("Team {} doesn't have any players.", team.name));
+        }
+        let mut color = team
+            .color
+            .as_deref()
+            .and_then(|c| TEAM_COLORS.iter().position(|(n, _)| *n == c));
+        if color.is_none_or(|c| teams.iter().any(|t| t.color == c)) {
+            // Select an available colour.
+            match COLOR_ORDER
+                .iter()
+                .copied()
+                .find(|c| !teams.iter().any(|t| t.color == *c))
+            {
+                Some(c) => {
+                    color = Some(c);
+                    recolored.push((team.name.clone(), TEAM_COLORS[c].0.to_owned()));
+                }
+                None => {
+                    return Err(format!(
+                        "Could not find assignable color for team {}. Try recreating teams.",
+                        team.name
+                    ));
+                }
+            }
+        }
+        let players = team.members.iter().filter_map(|m| find(m)).collect();
+        teams.push(Team::new(color.unwrap_or(COLOR_ORDER[0]), players));
+    }
+    Ok((teams, recolored))
 }
 
 /// One team per player (`/lockout players`), or one team of them all (`/blackout players`).
 pub fn teams_of_players(names: &[String], online: &[(u128, String)], blackout: bool) -> Result<Vec<Team>, String> {
+    if blackout && names.is_empty() {
+        return Err("Not enough players listed.".into());
+    }
+    if !blackout {
+        if names.len() < 2 {
+            return Err("Not enough players listed. Make sure you separate player names with spaces.".into());
+        }
+        if names.len() > 16 {
+            return Err("Too many players listed.".into());
+        }
+    }
     let mut players = Vec::new();
     for name in names {
         match online.iter().find(|(_, n)| n.eq_ignore_ascii_case(name)) {
@@ -1259,33 +1659,12 @@ pub fn teams_of_players(names: &[String], online: &[(u128, String)], blackout: b
         }
     }
     if blackout {
-        if players.is_empty() {
-            return Err("Not enough players listed.".into());
-        }
-        let color = COLOR_ORDER[0];
-        let name = wire::color_display(TEAM_COLORS[color].0);
-        return Ok(vec![Team {
-            name,
-            color,
-            players,
-            points: 0,
-        }]);
-    }
-    if players.len() < 2 {
-        return Err("Not enough players listed. Make sure you separate player names with spaces.".into());
-    }
-    if players.len() > 16 {
-        return Err("Too many players listed.".into());
+        return Ok(vec![Team::new(COLOR_ORDER[0], players)]);
     }
     Ok(players
         .into_iter()
         .enumerate()
-        .map(|(i, p)| Team {
-            name: p.1.clone(),
-            color: COLOR_ORDER[i],
-            players: vec![p],
-            points: 0,
-        })
+        .map(|(i, p)| Team::new(COLOR_ORDER[i], vec![p]))
         .collect())
 }
 
@@ -1314,6 +1693,18 @@ mod tests {
 
     const A: u128 = 1;
     const B: u128 = 2;
+
+    fn online(xp: &[(u128, i32)]) -> Vec<Online> {
+        xp.iter()
+            .map(|(u, l)| Online {
+                uuid: *u,
+                name: if *u == A { "Alex".into() } else { "Steve".into() },
+                dimension: "minecraft:overworld".into(),
+                position: [0.0, 64.0, 0.0],
+                xp_level: *l,
+            })
+            .collect()
+    }
 
     fn running(goals: &[&str]) -> State {
         let mut s = State::default();
@@ -1535,8 +1926,9 @@ mod tests {
         .unwrap();
         s.game = Some(Match::new(teams, vec![("ENTER_END".into(), DATA_NONE.into())], 100));
         let mut started = false;
-        for _ in 0..100 {
-            let out = s.tick(&[A, B], &HashMap::new());
+        // `gameStartRunnables`: the start runs on the tick after the countdown's last.
+        for _ in 0..101 {
+            let out = s.tick(&online(&[(A, 0), (B, 0)]), &[]);
             started |= out.iter().any(|a| {
                 matches!(
                     a,
@@ -1559,10 +1951,10 @@ mod tests {
             "KILL_GHAST",
         ]);
         s.game.as_mut().unwrap().ticks = 19;
-        s.tick(&[A, B], &HashMap::from([(A, 5), (B, 3)]));
+        s.tick(&online(&[(A, 5), (B, 3)]), &[]);
         assert_eq!(s.game.as_ref().unwrap().board[0].completed_by, Some(0));
         s.game.as_mut().unwrap().ticks = 39;
-        s.tick(&[A, B], &HashMap::from([(A, 5), (B, 9)]));
+        s.tick(&online(&[(A, 5), (B, 9)]), &[]);
         assert_eq!(s.game.as_ref().unwrap().board[0].completed_by, Some(1));
         let points: Vec<u32> = s.game.as_ref().unwrap().teams.iter().map(|t| t.points).collect();
         assert_eq!(points, vec![0, 1]);

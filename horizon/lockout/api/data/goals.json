@@ -12,7 +12,18 @@
     "minecraft:wooden_sword",
     "minecraft:wooden_shovel"
    ],
-   "id": "OBTAIN_WOODEN_TOOLS"
+   "id": "OBTAIN_WOODEN_TOOLS",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:wooden_axe",
+      "minecraft:wooden_hoe",
+      "minecraft:wooden_pickaxe",
+      "minecraft:wooden_sword",
+      "minecraft:wooden_shovel"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainStoneToolsGoal",
@@ -26,7 +37,18 @@
     "minecraft:stone_sword",
     "minecraft:stone_shovel"
    ],
-   "id": "OBTAIN_STONE_TOOLS"
+   "id": "OBTAIN_STONE_TOOLS",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:stone_axe",
+      "minecraft:stone_hoe",
+      "minecraft:stone_pickaxe",
+      "minecraft:stone_sword",
+      "minecraft:stone_shovel"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainIronToolsGoal",
@@ -40,7 +62,18 @@
     "minecraft:iron_sword",
     "minecraft:iron_shovel"
    ],
-   "id": "OBTAIN_IRON_TOOLS"
+   "id": "OBTAIN_IRON_TOOLS",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:iron_axe",
+      "minecraft:iron_hoe",
+      "minecraft:iron_pickaxe",
+      "minecraft:iron_sword",
+      "minecraft:iron_shovel"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainGoldenToolsGoal",
@@ -54,7 +87,18 @@
     "minecraft:golden_sword",
     "minecraft:golden_shovel"
    ],
-   "id": "OBTAIN_GOLDEN_TOOLS"
+   "id": "OBTAIN_GOLDEN_TOOLS",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:golden_axe",
+      "minecraft:golden_hoe",
+      "minecraft:golden_pickaxe",
+      "minecraft:golden_sword",
+      "minecraft:golden_shovel"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainDiamondToolsGoal",
@@ -68,7 +112,18 @@
     "minecraft:diamond_sword",
     "minecraft:diamond_shovel"
    ],
-   "id": "OBTAIN_DIAMOND_TOOLS"
+   "id": "OBTAIN_DIAMOND_TOOLS",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:diamond_axe",
+      "minecraft:diamond_hoe",
+      "minecraft:diamond_pickaxe",
+      "minecraft:diamond_sword",
+      "minecraft:diamond_shovel"
+     ]
+    }
+   ]
   },
   {
    "class": "MineDiamondOreGoal",
@@ -137,7 +192,12 @@
    "name": "Enter Nether",
    "texture": "nether_portal",
    "dimension": "minecraft:the_nether",
-   "id": "ENTER_NETHER"
+   "id": "ENTER_NETHER",
+   "render": [
+    {
+     "texture": "custom/nether_portal"
+    }
+   ]
   },
   {
    "class": "EnterEndGoal",
@@ -174,7 +234,17 @@
     "minecraft:leather_leggings",
     "minecraft:leather_boots"
    ],
-   "id": "WEAR_LEATHER_ARMOR"
+   "id": "WEAR_LEATHER_ARMOR",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:leather_helmet",
+      "minecraft:leather_chestplate",
+      "minecraft:leather_leggings",
+      "minecraft:leather_boots"
+     ]
+    }
+   ]
   },
   {
    "class": "WearGoldenArmorGoal",
@@ -187,7 +257,17 @@
     "minecraft:golden_leggings",
     "minecraft:golden_boots"
    ],
-   "id": "WEAR_GOLDEN_ARMOR"
+   "id": "WEAR_GOLDEN_ARMOR",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:golden_helmet",
+      "minecraft:golden_chestplate",
+      "minecraft:golden_leggings",
+      "minecraft:golden_boots"
+     ]
+    }
+   ]
   },
   {
    "class": "WearDiamondArmorGoal",
@@ -200,7 +280,17 @@
     "minecraft:diamond_leggings",
     "minecraft:diamond_boots"
    ],
-   "id": "WEAR_DIAMOND_ARMOR"
+   "id": "WEAR_DIAMOND_ARMOR",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:diamond_helmet",
+      "minecraft:diamond_chestplate",
+      "minecraft:diamond_leggings",
+      "minecraft:diamond_boots"
+     ]
+    }
+   ]
   },
   {
    "class": "WearIronArmorGoal",
@@ -213,7 +303,17 @@
     "minecraft:iron_leggings",
     "minecraft:iron_boots"
    ],
-   "id": "WEAR_IRON_ARMOR"
+   "id": "WEAR_IRON_ARMOR",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:iron_helmet",
+      "minecraft:iron_chestplate",
+      "minecraft:iron_leggings",
+      "minecraft:iron_boots"
+     ]
+    }
+   ]
   },
   {
    "class": "WearChainArmorPieceGoal",
@@ -227,6 +327,16 @@
     "minecraft:chainmail_boots"
    ],
    "id": "WEAR_CHAIN_ARMOR_PIECE",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:chainmail_helmet",
+      "minecraft:chainmail_chestplate",
+      "minecraft:chainmail_leggings",
+      "minecraft:chainmail_boots"
+     ]
+    }
+   ],
    "requirements": {
     "structures": [
      "minecraft:village_desert",
@@ -254,6 +364,11 @@
     "minecraft:cat"
    ],
    "id": "TAME_CAT",
+   "render": [
+    {
+     "texture": "custom/tame/tame_cat"
+    }
+   ],
    "requirements": {
     "structures": [
      "minecraft:village_desert",
@@ -274,6 +389,11 @@
     "minecraft:parrot"
    ],
    "id": "TAME_PARROT",
+   "render": [
+    {
+     "texture": "custom/tame/tame_parrot"
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:bamboo_jungle",
@@ -291,7 +411,12 @@
    "entities": [
     "minecraft:horse"
    ],
-   "id": "TAME_HORSE"
+   "id": "TAME_HORSE",
+   "render": [
+    {
+     "texture": "custom/tame/tame_horse"
+    }
+   ]
   },
   {
    "class": "TameWolfGoal",
@@ -302,7 +427,12 @@
    "entities": [
     "minecraft:wolf"
    ],
-   "id": "TAME_WOLF"
+   "id": "TAME_WOLF",
+   "render": [
+    {
+     "texture": "custom/tame/tame_wolf"
+    }
+   ]
   },
   {
    "class": "Breed4UniqueAnimalsGoal",
@@ -312,7 +442,16 @@
    "name": "Breed {amount} Unique Animals",
    "texture": "breed/breed_x",
    "icon": "minecraft:wheat",
-   "id": "BREED_4_UNIQUE_ANIMALS"
+   "id": "BREED_4_UNIQUE_ANIMALS",
+   "tooltip": true,
+   "render": [
+    {
+     "texture": "custom/breed/breed_x"
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "Breed6UniqueAnimalsGoal",
@@ -322,7 +461,16 @@
    "name": "Breed {amount} Unique Animals",
    "texture": "breed/breed_x",
    "icon": "minecraft:wheat",
-   "id": "BREED_6_UNIQUE_ANIMALS"
+   "id": "BREED_6_UNIQUE_ANIMALS",
+   "tooltip": true,
+   "render": [
+    {
+     "texture": "custom/breed/breed_x"
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "Breed8UniqueAnimalsGoal",
@@ -332,7 +480,16 @@
    "name": "Breed {amount} Unique Animals",
    "texture": "breed/breed_x",
    "icon": "minecraft:wheat",
-   "id": "BREED_8_UNIQUE_ANIMALS"
+   "id": "BREED_8_UNIQUE_ANIMALS",
+   "tooltip": true,
+   "render": [
+    {
+     "texture": "custom/breed/breed_x"
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "BreedChickenGoal",
@@ -343,7 +500,12 @@
    "entities": [
     "minecraft:chicken"
    ],
-   "id": "BREED_CHICKEN"
+   "id": "BREED_CHICKEN",
+   "render": [
+    {
+     "texture": "custom/breed/breed_chicken"
+    }
+   ]
   },
   {
    "class": "BreedCowsGoal",
@@ -354,7 +516,12 @@
    "entities": [
     "minecraft:cow"
    ],
-   "id": "BREED_COW"
+   "id": "BREED_COW",
+   "render": [
+    {
+     "texture": "custom/breed/breed_cow"
+    }
+   ]
   },
   {
    "class": "BreedHoglinGoal",
@@ -365,7 +532,12 @@
    "entities": [
     "minecraft:hoglin"
    ],
-   "id": "BREED_HOGLIN"
+   "id": "BREED_HOGLIN",
+   "render": [
+    {
+     "texture": "custom/breed/breed_hoglin"
+    }
+   ]
   },
   {
    "class": "BreedPigGoal",
@@ -376,7 +548,12 @@
    "entities": [
     "minecraft:pig"
    ],
-   "id": "BREED_PIG"
+   "id": "BREED_PIG",
+   "render": [
+    {
+     "texture": "custom/breed/breed_pig"
+    }
+   ]
   },
   {
    "class": "BreedRabbitGoal",
@@ -388,6 +565,11 @@
     "minecraft:rabbit"
    ],
    "id": "BREED_RABBIT",
+   "render": [
+    {
+     "texture": "custom/breed/breed_rabbit"
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:desert",
@@ -414,6 +596,11 @@
     "minecraft:fox"
    ],
    "id": "BREED_FOX",
+   "render": [
+    {
+     "texture": "custom/breed/breed_fox"
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:taiga",
@@ -433,7 +620,12 @@
    "entities": [
     "minecraft:sheep"
    ],
-   "id": "BREED_SHEEP"
+   "id": "BREED_SHEEP",
+   "render": [
+    {
+     "texture": "custom/breed/breed_sheep"
+    }
+   ]
   },
   {
    "class": "BreedStriderGoal",
@@ -444,7 +636,12 @@
    "entities": [
     "minecraft:strider"
    ],
-   "id": "BREED_STRIDER"
+   "id": "BREED_STRIDER",
+   "render": [
+    {
+     "texture": "custom/breed/breed_strider"
+    }
+   ]
   },
   {
    "class": "BreedGoatGoal",
@@ -456,6 +653,11 @@
     "minecraft:goat"
    ],
    "id": "BREED_GOAT",
+   "render": [
+    {
+     "texture": "custom/breed/breed_goat"
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:frozen_peaks",
@@ -474,6 +676,11 @@
     "minecraft:frog"
    ],
    "id": "BREED_FROGS",
+   "render": [
+    {
+     "texture": "custom/breed/breed_frogs"
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:swamp"
@@ -490,6 +697,11 @@
     "minecraft:witch"
    ],
    "id": "KILL_WITCH",
+   "render": [
+    {
+     "texture": "custom/kill/kill_witch"
+    }
+   ],
    "requirements": {
     "structures": [
      "minecraft:swamp_hut"
@@ -506,6 +718,11 @@
     "minecraft:zombie_villager"
    ],
    "id": "KILL_ZOMBIE_VILLAGER",
+   "render": [
+    {
+     "texture": "custom/kill/kill_zombie_villager"
+    }
+   ],
    "requirements": {
     "structures": [
      "minecraft:village_desert",
@@ -526,6 +743,11 @@
     "minecraft:stray"
    ],
    "id": "KILL_STRAY",
+   "render": [
+    {
+     "texture": "custom/kill/kill_stray"
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:frozen_river",
@@ -543,7 +765,12 @@
    "entities": [
     "minecraft:zoglin"
    ],
-   "id": "KILL_ZOGLIN"
+   "id": "KILL_ZOGLIN",
+   "render": [
+    {
+     "texture": "custom/kill/kill_zoglin"
+    }
+   ]
   },
   {
    "class": "KillSilverfishGoal",
@@ -554,7 +781,12 @@
    "entities": [
     "minecraft:silverfish"
    ],
-   "id": "KILL_SILVERFISH"
+   "id": "KILL_SILVERFISH",
+   "render": [
+    {
+     "texture": "custom/kill/kill_silverfish"
+    }
+   ]
   },
   {
    "class": "KillGuardianGoal",
@@ -566,6 +798,11 @@
     "minecraft:guardian"
    ],
    "id": "KILL_GUARDIAN",
+   "render": [
+    {
+     "texture": "custom/kill/kill_guardian"
+    }
+   ],
    "requirements": {
     "structures": [
      "minecraft:ocean_monument"
@@ -581,7 +818,12 @@
    "entities": [
     "minecraft:ghast"
    ],
-   "id": "KILL_GHAST"
+   "id": "KILL_GHAST",
+   "render": [
+    {
+     "texture": "custom/kill/kill_ghast"
+    }
+   ]
   },
   {
    "class": "KillBatGoal",
@@ -592,7 +834,12 @@
    "entities": [
     "minecraft:bat"
    ],
-   "id": "KILL_BAT"
+   "id": "KILL_BAT",
+   "render": [
+    {
+     "texture": "custom/kill/kill_bat"
+    }
+   ]
   },
   {
    "class": "KillSnowGolemGoal",
@@ -603,7 +850,12 @@
    "entities": [
     "minecraft:snow_golem"
    ],
-   "id": "KILL_SNOW_GOLEM"
+   "id": "KILL_SNOW_GOLEM",
+   "render": [
+    {
+     "texture": "custom/kill/kill_snow_golem"
+    }
+   ]
   },
   {
    "class": "KillSnowGolemInNetherGoal",
@@ -614,7 +866,12 @@
    "entities": [
     "minecraft:snow_golem"
    ],
-   "id": "KILL_SNOW_GOLEM_IN_NETHER"
+   "id": "KILL_SNOW_GOLEM_IN_NETHER",
+   "render": [
+    {
+     "texture": "custom/kill/kill_snowman_nether"
+    }
+   ]
   },
   {
    "class": "KillElderGuardianGoal",
@@ -626,6 +883,11 @@
     "minecraft:elder_guardian"
    ],
    "id": "KILL_ELDER_GUARDIAN",
+   "render": [
+    {
+     "texture": "custom/kill/kill_elder_guardian"
+    }
+   ],
    "requirements": {
     "structures": [
      "minecraft:ocean_monument"
@@ -645,6 +907,11 @@
    ],
    "icon": "minecraft:sheep_spawn_egg",
    "id": "KILL_COLORED_SHEEP",
+   "render": [
+    {
+     "texture": "custom/sheep/kill_{data}_sheep"
+    }
+   ],
    "data": "dye"
   },
   {
@@ -657,7 +924,9 @@
    ],
    "amount": 7,
    "icon": "minecraft:iron_sword",
-   "id": "KILL_7_UNIQUE_HOSTILE_MOBS"
+   "id": "KILL_7_UNIQUE_HOSTILE_MOBS",
+   "tooltip": true,
+   "icon_count": "{amount}"
   },
   {
    "class": "Kill10UniqueHostileMobsGoal",
@@ -669,7 +938,9 @@
    ],
    "amount": 10,
    "icon": "minecraft:iron_sword",
-   "id": "KILL_10_UNIQUE_HOSTILE_MOBS"
+   "id": "KILL_10_UNIQUE_HOSTILE_MOBS",
+   "tooltip": true,
+   "icon_count": "{amount}"
   },
   {
    "class": "Kill13UniqueHostileMobsGoal",
@@ -681,7 +952,9 @@
    ],
    "amount": 13,
    "icon": "minecraft:iron_sword",
-   "id": "KILL_13_UNIQUE_HOSTILE_MOBS"
+   "id": "KILL_13_UNIQUE_HOSTILE_MOBS",
+   "tooltip": true,
+   "icon_count": "{amount}"
   },
   {
    "class": "Kill15UniqueHostileMobsGoal",
@@ -693,7 +966,9 @@
    ],
    "amount": 15,
    "icon": "minecraft:iron_sword",
-   "id": "KILL_15_UNIQUE_HOSTILE_MOBS"
+   "id": "KILL_15_UNIQUE_HOSTILE_MOBS",
+   "tooltip": true,
+   "icon_count": "{amount}"
   },
   {
    "class": "Kill30UndeadMobsGoal",
@@ -722,7 +997,24 @@
    ],
    "amount": 30,
    "icon": "minecraft:wooden_sword",
-   "id": "KILL_30_UNDEAD_MOBS"
+   "id": "KILL_30_UNDEAD_MOBS",
+   "tooltip": true,
+   "render": [
+    {
+     "cycle_textures": [
+      "custom/undead/kill_zombie",
+      "custom/undead/kill_wither_skeleton",
+      "custom/undead/kill_zombie_villager",
+      "custom/undead/kill_drowned",
+      "custom/undead/kill_husk",
+      "custom/undead/kill_stray",
+      "custom/undead/kill_zoglin"
+     ]
+    },
+    {
+     "count": "30"
+    }
+   ]
   },
   {
    "class": "Kill20ArthropodMobsGoal",
@@ -742,7 +1034,22 @@
    ],
    "amount": 20,
    "icon": "minecraft:wooden_sword",
-   "id": "KILL_20_ARTHROPOD_MOBS"
+   "id": "KILL_20_ARTHROPOD_MOBS",
+   "tooltip": true,
+   "render": [
+    {
+     "cycle_textures": [
+      "custom/arthropod/kill_spider",
+      "custom/arthropod/kill_bee",
+      "custom/arthropod/kill_cave_spider",
+      "custom/arthropod/kill_endermite",
+      "custom/arthropod/kill_silverfish"
+     ]
+    },
+    {
+     "count": "20"
+    }
+   ]
   },
   {
    "class": "ObtainRedNetherBrickStairsGoal",
@@ -752,7 +1059,14 @@
    "items": [
     "minecraft:red_nether_brick_stairs"
    ],
-   "id": "OBTAIN_RED_NETHER_BRICK_STAIRS"
+   "id": "OBTAIN_RED_NETHER_BRICK_STAIRS",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:red_nether_brick_stairs"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainBucketOfTropicalFishGoal",
@@ -763,6 +1077,13 @@
     "minecraft:tropical_fish_bucket"
    ],
    "id": "OBTAIN_TROPICAL_FISH_BUCKET",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:tropical_fish_bucket"
+     ]
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:warm_ocean",
@@ -781,7 +1102,14 @@
    "items": [
     "minecraft:bookshelf"
    ],
-   "id": "OBTAIN_BOOKSHELF"
+   "id": "OBTAIN_BOOKSHELF",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:bookshelf"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainMossyStoneBrickWallGoal",
@@ -791,7 +1119,14 @@
    "items": [
     "minecraft:mossy_stone_brick_wall"
    ],
-   "id": "OBTAIN_MOSSY_STONE_BRICK_WALL"
+   "id": "OBTAIN_MOSSY_STONE_BRICK_WALL",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:mossy_stone_brick_wall"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainFloweringAzaleaGoal",
@@ -801,7 +1136,14 @@
    "items": [
     "minecraft:flowering_azalea"
    ],
-   "id": "OBTAIN_FLOWERING_AZALEA"
+   "id": "OBTAIN_FLOWERING_AZALEA",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:flowering_azalea"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainScaffoldingGoal",
@@ -811,7 +1153,14 @@
    "items": [
     "minecraft:scaffolding"
    ],
-   "id": "OBTAIN_SCAFFOLDING"
+   "id": "OBTAIN_SCAFFOLDING",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:scaffolding"
+     ]
+    }
+   ]
   },
   {
    "class": "PlaceEndCrystalGoal",
@@ -819,7 +1168,12 @@
    "category": "obtain",
    "name": "Place End Crystal",
    "texture": "end_crystal",
-   "id": "PLACE_END_CRYSTAL"
+   "id": "PLACE_END_CRYSTAL",
+   "render": [
+    {
+     "texture": "custom/end_crystal"
+    }
+   ]
   },
   {
    "class": "ObtainBellGoal",
@@ -830,6 +1184,13 @@
     "minecraft:bell"
    ],
    "id": "OBTAIN_BELL",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:bell"
+     ]
+    }
+   ],
    "requirements": {
     "structures": [
      "minecraft:village_desert",
@@ -848,7 +1209,14 @@
    "items": [
     "minecraft:experience_bottle"
    ],
-   "id": "OBTAIN_ENCHANT_BOTTLE"
+   "id": "OBTAIN_ENCHANT_BOTTLE",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:experience_bottle"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainPowderSnowBucketGoal",
@@ -859,6 +1227,13 @@
     "minecraft:powder_snow_bucket"
    ],
    "id": "OBTAIN_POWDER_SNOW_BUCKET",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:powder_snow_bucket"
+     ]
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:grove",
@@ -874,7 +1249,14 @@
    "items": [
     "minecraft:soul_lantern"
    ],
-   "id": "OBTAIN_SOUL_LANTERN"
+   "id": "OBTAIN_SOUL_LANTERN",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:soul_lantern"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainAncientDebrisGoal",
@@ -884,7 +1266,14 @@
    "items": [
     "minecraft:ancient_debris"
    ],
-   "id": "OBTAIN_ANCIENT_DEBRIS"
+   "id": "OBTAIN_ANCIENT_DEBRIS",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:ancient_debris"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainEnderChestGoal",
@@ -894,7 +1283,14 @@
    "items": [
     "minecraft:ender_chest"
    ],
-   "id": "OBTAIN_ENDER_CHEST"
+   "id": "OBTAIN_ENDER_CHEST",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:ender_chest"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainHeartOfTheSeaGoal",
@@ -904,7 +1300,14 @@
    "items": [
     "minecraft:heart_of_the_sea"
    ],
-   "id": "OBTAIN_HEART_OF_THE_SEA"
+   "id": "OBTAIN_HEART_OF_THE_SEA",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:heart_of_the_sea"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainWitherSkeletonSkullGoal",
@@ -915,6 +1318,13 @@
     "minecraft:wither_skeleton_skull"
    ],
    "id": "OBTAIN_WITHER_SKELETON_SKULL",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:wither_skeleton_skull"
+     ]
+    }
+   ],
    "requirements": {
     "random_pool": false
    }
@@ -927,7 +1337,14 @@
    "items": [
     "minecraft:end_rod"
    ],
-   "id": "OBTAIN_END_ROD"
+   "id": "OBTAIN_END_ROD",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:end_rod"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainSpongeGoal",
@@ -938,6 +1355,13 @@
     "minecraft:sponge"
    ],
    "id": "OBTAIN_SPONGE",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:sponge"
+     ]
+    }
+   ],
    "requirements": {
     "structures": [
      "minecraft:ocean_monument"
@@ -952,7 +1376,14 @@
    "items": [
     "minecraft:dragon_egg"
    ],
-   "id": "OBTAIN_DRAGON_EGG"
+   "id": "OBTAIN_DRAGON_EGG",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:dragon_egg"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainTNTGoal",
@@ -962,7 +1393,14 @@
    "items": [
     "minecraft:tnt"
    ],
-   "id": "OBTAIN_TNT"
+   "id": "OBTAIN_TNT",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:tnt"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainCobwebGoal",
@@ -972,7 +1410,14 @@
    "items": [
     "minecraft:cobweb"
    ],
-   "id": "OBTAIN_COBWEB"
+   "id": "OBTAIN_COBWEB",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:cobweb"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainMudBrickWallGoal",
@@ -982,7 +1427,14 @@
    "items": [
     "minecraft:mud_brick_wall"
    ],
-   "id": "OBTAIN_MUD_BRICK_WALL"
+   "id": "OBTAIN_MUD_BRICK_WALL",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:mud_brick_wall"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainDaylightDetectorGoal",
@@ -992,7 +1444,14 @@
    "items": [
     "minecraft:daylight_detector"
    ],
-   "id": "OBTAIN_DAYLIGHT_DETECTOR"
+   "id": "OBTAIN_DAYLIGHT_DETECTOR",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:daylight_detector"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainRedstoneRepeaterGoal",
@@ -1002,7 +1461,14 @@
    "items": [
     "minecraft:repeater"
    ],
-   "id": "OBTAIN_REDSTONE_REPEATER"
+   "id": "OBTAIN_REDSTONE_REPEATER",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:repeater"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainRedstoneComparatorGoal",
@@ -1012,7 +1478,14 @@
    "items": [
     "minecraft:comparator"
    ],
-   "id": "OBTAIN_REDSTONE_COMPARATOR"
+   "id": "OBTAIN_REDSTONE_COMPARATOR",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:comparator"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainObserverGoal",
@@ -1022,7 +1495,14 @@
    "items": [
     "minecraft:observer"
    ],
-   "id": "OBTAIN_OBSERVER"
+   "id": "OBTAIN_OBSERVER",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:observer"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainActivatorRailGoal",
@@ -1032,7 +1512,14 @@
    "items": [
     "minecraft:activator_rail"
    ],
-   "id": "OBTAIN_ACTIVATOR_RAIL"
+   "id": "OBTAIN_ACTIVATOR_RAIL",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:activator_rail"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainDetectorRailGoal",
@@ -1042,7 +1529,14 @@
    "items": [
     "minecraft:detector_rail"
    ],
-   "id": "OBTAIN_DETECTOR_RAIL"
+   "id": "OBTAIN_DETECTOR_RAIL",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:detector_rail"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainPoweredRailGoal",
@@ -1052,7 +1546,14 @@
    "items": [
     "minecraft:powered_rail"
    ],
-   "id": "OBTAIN_POWERED_RAIL"
+   "id": "OBTAIN_POWERED_RAIL",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:powered_rail"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainDispenserGoal",
@@ -1062,7 +1563,14 @@
    "items": [
     "minecraft:dispenser"
    ],
-   "id": "OBTAIN_DISPENSER"
+   "id": "OBTAIN_DISPENSER",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:dispenser"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainPistonGoal",
@@ -1072,7 +1580,14 @@
    "items": [
     "minecraft:piston"
    ],
-   "id": "OBTAIN_PISTON"
+   "id": "OBTAIN_PISTON",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:piston"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainAllRawOreBlocksGoal",
@@ -1084,7 +1599,16 @@
     "minecraft:raw_gold_block",
     "minecraft:raw_iron_block"
    ],
-   "id": "OBTAIN_ALL_RAW_ORE_BLOCKS"
+   "id": "OBTAIN_ALL_RAW_ORE_BLOCKS",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:raw_copper_block",
+      "minecraft:raw_gold_block",
+      "minecraft:raw_iron_block"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainAllHorseArmorGoal",
@@ -1098,7 +1622,18 @@
     "minecraft:diamond_horse_armor",
     "minecraft:golden_horse_armor"
    ],
-   "id": "OBTAIN_ALL_HORSE_ARMOR"
+   "id": "OBTAIN_ALL_HORSE_ARMOR",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:iron_horse_armor",
+      "minecraft:leather_horse_armor",
+      "minecraft:copper_horse_armor",
+      "minecraft:diamond_horse_armor",
+      "minecraft:golden_horse_armor"
+     ]
+    }
+   ]
   },
   {
    "class": "Obtain4UniqueSeedsGoal",
@@ -1113,7 +1648,18 @@
     "minecraft:torchflower_seeds"
    ],
    "amount": 4,
-   "id": "OBTAIN_4_UNIQUE_SEEDS"
+   "id": "OBTAIN_4_UNIQUE_SEEDS",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:wheat_seeds",
+      "minecraft:beetroot_seeds",
+      "minecraft:melon_seeds",
+      "minecraft:pumpkin_seeds",
+      "minecraft:torchflower_seeds"
+     ]
+    }
+   ]
   },
   {
    "class": "Obtain6UniqueFlowersGoal",
@@ -1141,7 +1687,34 @@
     "minecraft:peony"
    ],
    "amount": 6,
-   "id": "OBTAIN_6_UNIQUE_FLOWERS"
+   "id": "OBTAIN_6_UNIQUE_FLOWERS",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:dandelion",
+      "minecraft:poppy",
+      "minecraft:blue_orchid",
+      "minecraft:allium",
+      "minecraft:azure_bluet",
+      "minecraft:red_tulip",
+      "minecraft:orange_tulip",
+      "minecraft:white_tulip",
+      "minecraft:pink_tulip",
+      "minecraft:oxeye_daisy",
+      "minecraft:cornflower",
+      "minecraft:lily_of_the_valley",
+      "minecraft:torchflower",
+      "minecraft:wither_rose",
+      "minecraft:sunflower",
+      "minecraft:lilac",
+      "minecraft:rose_bush",
+      "minecraft:peony"
+     ]
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "ObtainColoredGlazedTerracottaGoal",
@@ -1164,6 +1737,16 @@
    ],
    "amount": 64,
    "id": "OBTAIN_64_COLORED_WOOL",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:wool"
+     ]
+    },
+    {
+     "count": "64"
+    }
+   ],
    "data": "dye"
   },
   {
@@ -1176,6 +1759,16 @@
    ],
    "amount": 64,
    "id": "OBTAIN_64_COLORED_CONCRETE",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:concrete"
+     ]
+    },
+    {
+     "count": "64"
+    }
+   ],
    "data": "dye"
   },
   {
@@ -1186,7 +1779,14 @@
    "items": [
     "minecraft:written_book"
    ],
-   "id": "OBTAIN_WRITTEN_BOOK"
+   "id": "OBTAIN_WRITTEN_BOOK",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:written_book"
+     ]
+    }
+   ]
   },
   {
    "class": "FillInventoryWithUniqueItemsGoal",
@@ -1196,7 +1796,14 @@
    "items": [
     "minecraft:chest"
    ],
-   "id": "FILL_INVENTORY_UNIQUE_ITEMS"
+   "id": "FILL_INVENTORY_UNIQUE_ITEMS",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:chest"
+     ]
+    }
+   ]
   },
   {
    "class": "GetThisBoatHasLegsAdvancementGoal",
@@ -1220,7 +1827,15 @@
    "items": [
     "minecraft:carved_pumpkin"
    ],
-   "id": "WEAR_CARVED_PUMPKIN_FOR_5_MINUTES"
+   "id": "WEAR_CARVED_PUMPKIN_FOR_5_MINUTES",
+   "tooltip": true,
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:carved_pumpkin"
+     ]
+    }
+   ]
   },
   {
    "class": "GetLocalBreweryAdvancementGoal",
@@ -1384,7 +1999,16 @@
    "amount": 5,
    "texture": "eat_unique",
    "icon": "minecraft:apple",
-   "id": "EAT_5_UNIQUE_FOOD"
+   "id": "EAT_5_UNIQUE_FOOD",
+   "tooltip": true,
+   "render": [
+    {
+     "texture": "custom/eat_unique"
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "Eat10UniqueFoodsGoal",
@@ -1394,7 +2018,16 @@
    "amount": 10,
    "texture": "eat_unique",
    "icon": "minecraft:apple",
-   "id": "EAT_10_UNIQUE_FOOD"
+   "id": "EAT_10_UNIQUE_FOOD",
+   "tooltip": true,
+   "render": [
+    {
+     "texture": "custom/eat_unique"
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "Eat15UniqueFoodsGoal",
@@ -1404,7 +2037,16 @@
    "amount": 15,
    "texture": "eat_unique",
    "icon": "minecraft:apple",
-   "id": "EAT_15_UNIQUE_FOOD"
+   "id": "EAT_15_UNIQUE_FOOD",
+   "tooltip": true,
+   "render": [
+    {
+     "texture": "custom/eat_unique"
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "Eat20UniqueFoodsGoal",
@@ -1414,7 +2056,16 @@
    "amount": 20,
    "texture": "eat_unique",
    "icon": "minecraft:apple",
-   "id": "EAT_20_UNIQUE_FOOD"
+   "id": "EAT_20_UNIQUE_FOOD",
+   "tooltip": true,
+   "render": [
+    {
+     "texture": "custom/eat_unique"
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "Eat25UniqueFoodsGoal",
@@ -1424,7 +2075,16 @@
    "amount": 25,
    "texture": "eat_unique",
    "icon": "minecraft:apple",
-   "id": "EAT_25_UNIQUE_FOOD"
+   "id": "EAT_25_UNIQUE_FOOD",
+   "tooltip": true,
+   "render": [
+    {
+     "texture": "custom/eat_unique"
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "EatChorusFruitGoal",
@@ -1529,7 +2189,12 @@
     "minecraft:eat_cake_slice"
    ],
    "icon": "minecraft:cake",
-   "id": "EAT_CAKE"
+   "id": "EAT_CAKE",
+   "render": [
+    {
+     "texture": "custom/eat_cake"
+    }
+   ]
   },
   {
    "class": "Obtain4UniqueSaplingsGoal",
@@ -1549,7 +2214,26 @@
     "minecraft:mangrove_propagule"
    ],
    "amount": 4,
-   "id": "OBTAIN_4_UNIQUE_SAPLINGS"
+   "id": "OBTAIN_4_UNIQUE_SAPLINGS",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:oak_sapling",
+      "minecraft:acacia_sapling",
+      "minecraft:birch_sapling",
+      "minecraft:cherry_sapling",
+      "minecraft:dark_oak_sapling",
+      "minecraft:jungle_sapling",
+      "minecraft:pale_oak_sapling",
+      "minecraft:poplar_sapling",
+      "minecraft:spruce_sapling",
+      "minecraft:mangrove_propagule"
+     ]
+    },
+    {
+     "count": "4"
+    }
+   ]
   },
   {
    "class": "TootGoatHornGoal",
@@ -1564,6 +2248,11 @@
    ],
    "icon": "minecraft:goat_horn",
    "id": "TOOT_GOAT_HORN",
+   "render": [
+    {
+     "texture": "item/goat_horn"
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:frozen_peaks",
@@ -1618,7 +2307,18 @@
     "minecraft:nether/explore_nether"
    ],
    "icon": "minecraft:crimson_nylium",
-   "id": "GET_HOT_TOURIST_DESTINATIONS_ADVANCEMENT"
+   "id": "GET_HOT_TOURIST_DESTINATIONS_ADVANCEMENT",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:crimson_nylium",
+      "minecraft:warped_nylium",
+      "minecraft:soul_soil",
+      "minecraft:netherrack",
+      "minecraft:basalt"
+     ]
+    }
+   ]
   },
   {
    "class": "GetNotQuiteNineLivesAdvancementGoal",
@@ -1685,7 +2385,12 @@
    "effects": [
     "minecraft:absorption"
    ],
-   "id": "GET_ABSORPTION_STATUS_EFFECT"
+   "id": "GET_ABSORPTION_STATUS_EFFECT",
+   "render": [
+    {
+     "texture": "custom/status_effect/absorption"
+    }
+   ]
   },
   {
    "class": "GetBadOmenStatusEffectGoal",
@@ -1697,6 +2402,11 @@
     "minecraft:bad_omen"
    ],
    "id": "GET_BAD_OMEN_STATUS_EFFECT",
+   "render": [
+    {
+     "texture": "custom/status_effect/bad_omen"
+    }
+   ],
    "requirements": {
     "structures": [
      "minecraft:pillager_outpost"
@@ -1712,7 +2422,12 @@
    "effects": [
     "minecraft:glowing"
    ],
-   "id": "GET_GLOWING_STATUS_EFFECT"
+   "id": "GET_GLOWING_STATUS_EFFECT",
+   "render": [
+    {
+     "texture": "custom/status_effect/glowing"
+    }
+   ]
   },
   {
    "class": "GetJumpBoostStatusEffectGoal",
@@ -1723,7 +2438,12 @@
    "effects": [
     "minecraft:jump_boost"
    ],
-   "id": "GET_JUMP_BOOST_STATUS_EFFECT"
+   "id": "GET_JUMP_BOOST_STATUS_EFFECT",
+   "render": [
+    {
+     "texture": "custom/status_effect/jump_boost"
+    }
+   ]
   },
   {
    "class": "GetLevitationStatusEffectGoal",
@@ -1735,6 +2455,11 @@
     "minecraft:levitation"
    ],
    "id": "GET_LEVITATION_STATUS_EFFECT",
+   "render": [
+    {
+     "texture": "custom/status_effect/levitation"
+    }
+   ],
    "requirements": {
     "random_pool": false
    }
@@ -1749,6 +2474,11 @@
     "minecraft:mining_fatigue"
    ],
    "id": "GET_MINING_FATIGUE_STATUS_EFFECT",
+   "render": [
+    {
+     "texture": "custom/status_effect/mining_fatigue"
+    }
+   ],
    "requirements": {
     "structures": [
      "minecraft:ocean_monument"
@@ -1765,6 +2495,11 @@
     "minecraft:nausea"
    ],
    "id": "GET_NAUSEA_STATUS_EFFECT",
+   "render": [
+    {
+     "texture": "custom/status_effect/nausea"
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:warm_ocean",
@@ -1782,7 +2517,12 @@
    "effects": [
     "minecraft:poison"
    ],
-   "id": "GET_POISON_STATUS_EFFECT"
+   "id": "GET_POISON_STATUS_EFFECT",
+   "render": [
+    {
+     "texture": "custom/status_effect/poison"
+    }
+   ]
   },
   {
    "class": "GetWeaknessStatusEffectGoal",
@@ -1793,7 +2533,12 @@
    "effects": [
     "minecraft:weakness"
    ],
-   "id": "GET_WEAKNESS_STATUS_EFFECT"
+   "id": "GET_WEAKNESS_STATUS_EFFECT",
+   "render": [
+    {
+     "texture": "custom/status_effect/weakness"
+    }
+   ]
   },
   {
    "class": "DieToAnvilGoal",
@@ -1804,7 +2549,12 @@
    "damage_types": [
     "minecraft:falling_anvil"
    ],
-   "id": "DIE_BY_ANVIL"
+   "id": "DIE_BY_ANVIL",
+   "render": [
+    {
+     "texture": "custom/death/die_to_anvil"
+    }
+   ]
   },
   {
    "class": "DieToBeeStingGoal",
@@ -1815,7 +2565,12 @@
    "damage_types": [
     "minecraft:sting"
    ],
-   "id": "DIE_BY_BEE_STING"
+   "id": "DIE_BY_BEE_STING",
+   "render": [
+    {
+     "texture": "custom/death/die_to_bee"
+    }
+   ]
   },
   {
    "class": "DieToBerryBushGoal",
@@ -1827,6 +2582,11 @@
     "minecraft:sweet_berry_bush"
    ],
    "id": "DIE_BY_BERRY_BUSH",
+   "render": [
+    {
+     "texture": "custom/death/die_to_sweet_berries"
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:taiga",
@@ -1844,6 +2604,11 @@
     "minecraft:cactus"
    ],
    "id": "DIE_BY_CACTUS",
+   "render": [
+    {
+     "texture": "custom/death/die_to_cactus"
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:desert",
@@ -1859,7 +2624,16 @@
    "category": "death",
    "name": "Die by falling off Vines",
    "texture": "death/die_to_vines",
-   "id": "DIE_BY_FALLING_OFF_VINE"
+   "id": "DIE_BY_FALLING_OFF_VINE",
+   "render": [
+    {
+     "cycle_textures": [
+      "custom/death/die_to_vines",
+      "custom/death/die_to_twisting_vines",
+      "custom/death/die_to_weeping_vines"
+     ]
+    }
+   ]
   },
   {
    "class": "DieToFallingStalactiteGoal",
@@ -1870,7 +2644,12 @@
    "damage_types": [
     "minecraft:falling_stalactite"
    ],
-   "id": "DIE_BY_FALLING_STALACTITE"
+   "id": "DIE_BY_FALLING_STALACTITE",
+   "render": [
+    {
+     "texture": "custom/death/die_to_falling_stalactite"
+    }
+   ]
   },
   {
    "class": "DieToFireworkGoal",
@@ -1881,7 +2660,12 @@
    "damage_types": [
     "minecraft:fireworks"
    ],
-   "id": "DIE_BY_FIREWORK"
+   "id": "DIE_BY_FIREWORK",
+   "render": [
+    {
+     "texture": "custom/death/die_to_firework"
+    }
+   ]
   },
   {
    "class": "DieToIntentionalGameDesignGoal",
@@ -1892,7 +2676,15 @@
    "damage_types": [
     "minecraft:bad_respawn_point"
    ],
-   "id": "DIE_BY_INTENTIONAL_GAME_DESIGN"
+   "id": "DIE_BY_INTENTIONAL_GAME_DESIGN",
+   "render": [
+    {
+     "cycle_textures": [
+      "custom/death/die_to_anchor",
+      "custom/death/die_to_bed"
+     ]
+    }
+   ]
   },
   {
    "class": "DieToIronGolemGoal",
@@ -1903,7 +2695,12 @@
    "entities": [
     "minecraft:iron_golem"
    ],
-   "id": "DIE_BY_IRON_GOLEM"
+   "id": "DIE_BY_IRON_GOLEM",
+   "render": [
+    {
+     "texture": "custom/death/die_to_golem"
+    }
+   ]
   },
   {
    "class": "DieToPolarBearGoal",
@@ -1915,6 +2712,11 @@
     "minecraft:polar_bear"
    ],
    "id": "DIE_TO_POLAR_BEAR",
+   "render": [
+    {
+     "texture": "custom/death/die_to_polar_bear"
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:snowy_plains",
@@ -1935,6 +2737,11 @@
     "minecraft:indirect_magic"
    ],
    "id": "DIE_BY_MAGIC",
+   "render": [
+    {
+     "texture": "custom/death/die_to_magic"
+    }
+   ],
    "requirements": {
     "structures": [
      "minecraft:ocean_monument"
@@ -1947,7 +2754,12 @@
    "category": "death",
    "name": "Die to TNT Minecart",
    "texture": "death/die_to_tnt_minecart",
-   "id": "DIE_BY_TNT_MINECART"
+   "id": "DIE_BY_TNT_MINECART",
+   "render": [
+    {
+     "texture": "custom/death/die_to_tnt_minecart"
+    }
+   ]
   },
   {
    "class": "GetATerribleFortressAdvancementGoal",
@@ -2032,7 +2844,12 @@
    "name": "Get 3 Status Effects at once",
    "texture": "status_effect/3_status_effects",
    "amount": 3,
-   "id": "GET_3_STATUS_EFFECTS_AT_ONCE"
+   "id": "GET_3_STATUS_EFFECTS_AT_ONCE",
+   "render": [
+    {
+     "texture": "custom/status_effect/3_status_effects"
+    }
+   ]
   },
   {
    "class": "Get4StatusEffectsGoal",
@@ -2041,7 +2858,12 @@
    "name": "Get 4 Status Effects at once",
    "texture": "status_effect/4_status_effects",
    "amount": 4,
-   "id": "GET_4_STATUS_EFFECTS_AT_ONCE"
+   "id": "GET_4_STATUS_EFFECTS_AT_ONCE",
+   "render": [
+    {
+     "texture": "custom/status_effect/4_status_effects"
+    }
+   ]
   },
   {
    "class": "Get6StatusEffectsGoal",
@@ -2050,7 +2872,12 @@
    "name": "Get 6 Status Effects at once",
    "texture": "status_effect/6_status_effects",
    "amount": 6,
-   "id": "GET_6_STATUS_EFFECTS_AT_ONCE"
+   "id": "GET_6_STATUS_EFFECTS_AT_ONCE",
+   "render": [
+    {
+     "texture": "custom/status_effect/6_status_effects"
+    }
+   ]
   },
   {
    "class": "ReachXPLevel15Goal",
@@ -2059,7 +2886,12 @@
    "name": "Reach XP level 15",
    "texture": "experience/level_15",
    "amount": 15,
-   "id": "REACH_EXP_LEVEL_15"
+   "id": "REACH_EXP_LEVEL_15",
+   "render": [
+    {
+     "texture": "custom/experience/level_15"
+    }
+   ]
   },
   {
    "class": "ReachXPLevel30Goal",
@@ -2068,7 +2900,12 @@
    "name": "Reach XP level 30",
    "texture": "experience/level_30",
    "amount": 30,
-   "id": "REACH_EXP_LEVEL_30"
+   "id": "REACH_EXP_LEVEL_30",
+   "render": [
+    {
+     "texture": "custom/experience/level_30"
+    }
+   ]
   },
   {
    "class": "RideHorseGoal",
@@ -2196,7 +3033,12 @@
     "minecraft:clean_shulker_box"
    ],
    "icon": "minecraft:enchanting_table",
-   "id": "USE_CAULDRON"
+   "id": "USE_CAULDRON",
+   "render": [
+    {
+     "texture": "custom/use_cauldron"
+    }
+   ]
   },
   {
    "class": "UseComposterGoal",
@@ -2208,7 +3050,12 @@
     "minecraft:composter"
    ],
    "icon": "minecraft:composter",
-   "id": "USE_COMPOSTER"
+   "id": "USE_COMPOSTER",
+   "render": [
+    {
+     "texture": "custom/filled_composter"
+    }
+   ]
   },
   {
    "class": "UseJukeboxGoal",
@@ -2230,7 +3077,12 @@
    "category": "misc",
    "name": "Use Glow Ink on Crimson Sign",
    "texture": "glow_crimson_sign",
-   "id": "USE_GLOW_INK"
+   "id": "USE_GLOW_INK",
+   "render": [
+    {
+     "texture": "custom/glow_crimson_sign"
+    }
+   ]
   },
   {
    "class": "EmptyHungerBarGoal",
@@ -2238,7 +3090,12 @@
    "category": "misc",
    "name": "Empty Hunger Bar",
    "texture": "starve",
-   "id": "EMPTY_HUNGER_BAR"
+   "id": "EMPTY_HUNGER_BAR",
+   "render": [
+    {
+     "texture": "custom/starve"
+    }
+   ]
   },
   {
    "class": "ReachHeightLimitGoal",
@@ -2246,7 +3103,12 @@
    "category": "misc",
    "name": "Reach height limit in Overworld",
    "texture": "height_limit",
-   "id": "REACH_HEIGHT_LIMIT"
+   "id": "REACH_HEIGHT_LIMIT",
+   "render": [
+    {
+     "texture": "custom/height_limit"
+    }
+   ]
   },
   {
    "class": "ReachBedrockGoal",
@@ -2258,7 +3120,15 @@
     "minecraft:bedrock"
    ],
    "icon": "minecraft:bedrock",
-   "id": "REACH_BEDROCK"
+   "id": "REACH_BEDROCK",
+   "render": [
+    {
+     "item": "minecraft:bedrock"
+    },
+    {
+     "texture": "custom/down_arrow"
+    }
+   ]
   },
   {
    "class": "ObtainClockGoal",
@@ -2268,7 +3138,14 @@
    "items": [
     "minecraft:clock"
    ],
-   "id": "OBTAIN_CLOCK"
+   "id": "OBTAIN_CLOCK",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:clock"
+     ]
+    }
+   ]
   },
   {
    "class": "Obtain6UniqueBucketsGoal",
@@ -2289,7 +3166,27 @@
     "minecraft:tadpole_bucket"
    ],
    "amount": 6,
-   "id": "OBTAIN_6_UNIQUE_BUCKETS"
+   "id": "OBTAIN_6_UNIQUE_BUCKETS",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:bucket",
+      "minecraft:water_bucket",
+      "minecraft:cod_bucket",
+      "minecraft:salmon_bucket",
+      "minecraft:lava_bucket",
+      "minecraft:milk_bucket",
+      "minecraft:tropical_fish_bucket",
+      "minecraft:pufferfish_bucket",
+      "minecraft:axolotl_bucket",
+      "minecraft:powder_snow_bucket",
+      "minecraft:tadpole_bucket"
+     ]
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "ObtainAllMinecartsGoal",
@@ -2303,7 +3200,18 @@
     "minecraft:hopper_minecart",
     "minecraft:tnt_minecart"
    ],
-   "id": "OBTAIN_ALL_MINECARTS"
+   "id": "OBTAIN_ALL_MINECARTS",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:minecart",
+      "minecraft:chest_minecart",
+      "minecraft:furnace_minecart",
+      "minecraft:hopper_minecart",
+      "minecraft:tnt_minecart"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainAllMushroomsGoal",
@@ -2316,7 +3224,17 @@
     "minecraft:crimson_fungus",
     "minecraft:warped_fungus"
    ],
-   "id": "OBTAIN_ALL_MUSHROOMS"
+   "id": "OBTAIN_ALL_MUSHROOMS",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:red_mushroom",
+      "minecraft:brown_mushroom",
+      "minecraft:crimson_fungus",
+      "minecraft:warped_fungus"
+     ]
+    }
+   ]
   },
   {
    "class": "Obtain7WorkstationsGoal",
@@ -2339,7 +3257,29 @@
     "minecraft:grindstone"
    ],
    "amount": 7,
-   "id": "OBTAIN_7_UNIQUE_WORKSTATIONS"
+   "id": "OBTAIN_7_UNIQUE_WORKSTATIONS",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:blast_furnace",
+      "minecraft:smoker",
+      "minecraft:cartography_table",
+      "minecraft:brewing_stand",
+      "minecraft:barrel",
+      "minecraft:composter",
+      "minecraft:fletching_table",
+      "minecraft:cauldron",
+      "minecraft:lectern",
+      "minecraft:stonecutter",
+      "minecraft:loom",
+      "minecraft:smithing_table",
+      "minecraft:grindstone"
+     ]
+    },
+    {
+     "count": "7"
+    }
+   ]
   },
   {
    "class": "ObtainRedstoneLampGoal",
@@ -2349,7 +3289,14 @@
    "items": [
     "minecraft:redstone_lamp"
    ],
-   "id": "OBTAIN_REDSTONE_LAMP"
+   "id": "OBTAIN_REDSTONE_LAMP",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:redstone_lamp"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainSoulCampfireGoal",
@@ -2359,7 +3306,14 @@
    "items": [
     "minecraft:soul_campfire"
    ],
-   "id": "OBTAIN_SOUL_CAMPFIRE"
+   "id": "OBTAIN_SOUL_CAMPFIRE",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:soul_campfire"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainAllPumpkinsGoal",
@@ -2371,7 +3325,16 @@
     "minecraft:carved_pumpkin",
     "minecraft:jack_o_lantern"
    ],
-   "id": "OBTAIN_ALL_PUMPKINS"
+   "id": "OBTAIN_ALL_PUMPKINS",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:pumpkin",
+      "minecraft:carved_pumpkin",
+      "minecraft:jack_o_lantern"
+     ]
+    }
+   ]
   },
   {
    "class": "AngerZombifiedPiglinGoal",
@@ -2379,7 +3342,12 @@
    "category": "misc",
    "name": "Enrage Zombified Piglin",
    "texture": "enrage_zombie_piglin",
-   "id": "ENRAGE_ZOMBIFIED_PIGLIN"
+   "id": "ENRAGE_ZOMBIFIED_PIGLIN",
+   "render": [
+    {
+     "texture": "custom/enrage_zombie_piglin"
+    }
+   ]
   },
   {
    "class": "ObtainBrickWallGoal",
@@ -2389,7 +3357,14 @@
    "items": [
     "minecraft:brick_wall"
    ],
-   "id": "OBTAIN_BRICK_WALL"
+   "id": "OBTAIN_BRICK_WALL",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:brick_wall"
+     ]
+    }
+   ]
   },
   {
    "class": "Get10UniqueAdvancementsGoal",
@@ -2399,7 +3374,13 @@
    "texture": "advancements/10_advancements",
    "amount": 10,
    "icon": "minecraft:apple",
-   "id": "GET_10_ADVANCEMENTS"
+   "id": "GET_10_ADVANCEMENTS",
+   "tooltip": true,
+   "render": [
+    {
+     "texture": "custom/advancements/10_advancements"
+    }
+   ]
   },
   {
    "class": "Get20UniqueAdvancementsGoal",
@@ -2409,7 +3390,13 @@
    "texture": "advancements/20_advancements",
    "amount": 20,
    "icon": "minecraft:apple",
-   "id": "GET_20_ADVANCEMENTS"
+   "id": "GET_20_ADVANCEMENTS",
+   "tooltip": true,
+   "render": [
+    {
+     "texture": "custom/advancements/20_advancements"
+    }
+   ]
   },
   {
    "class": "Get30UniqueAdvancementsGoal",
@@ -2419,7 +3406,13 @@
    "texture": "advancements/30_advancements",
    "amount": 30,
    "icon": "minecraft:apple",
-   "id": "GET_30_ADVANCEMENTS"
+   "id": "GET_30_ADVANCEMENTS",
+   "tooltip": true,
+   "render": [
+    {
+     "texture": "custom/advancements/30_advancements"
+    }
+   ]
   },
   {
    "class": "WearUniqueColoredLeatherArmorGoal",
@@ -2432,7 +3425,17 @@
     "minecraft:leather_leggings",
     "minecraft:leather_boots"
    ],
-   "id": "WEAR_UNIQUE_COLORED_LEATHER_ARMOR"
+   "id": "WEAR_UNIQUE_COLORED_LEATHER_ARMOR",
+   "render": [
+    {
+     "dyed_cycle": [
+      "minecraft:leather_helmet",
+      "minecraft:leather_chestplate",
+      "minecraft:leather_leggings",
+      "minecraft:leather_boots"
+     ]
+    }
+   ]
   },
   {
    "class": "KillOtherTeamPlayer",
@@ -2441,6 +3444,11 @@
    "name": "Kill another team's player",
    "texture": "kill_player",
    "id": "KILL_OTHER_PLAYER",
+   "render": [
+    {
+     "texture": "custom/kill_player"
+    }
+   ],
    "requirements": {
     "teams_min": 2
    }
@@ -2455,6 +3463,11 @@
     "minecraft:crafting_table"
    ],
    "id": "OPPONENT_OBTAINS_CRAFTING_TABLE",
+   "render": [
+    {
+     "texture": "custom/opponent/no_crafting_table"
+    }
+   ],
    "requirements": {
     "random_pool": false,
     "teams_exactly": 2
@@ -2470,6 +3483,11 @@
     "minecraft:obsidian"
    ],
    "id": "OPPONENT_OBTAINS_OBSIDIAN",
+   "render": [
+    {
+     "texture": "custom/opponent/no_obsidian"
+    }
+   ],
    "requirements": {
     "random_pool": false,
     "teams_exactly": 2
@@ -2485,6 +3503,11 @@
     "minecraft:wheat_seeds"
    ],
    "id": "OPPONENT_OBTAINS_SEEDS",
+   "render": [
+    {
+     "texture": "custom/opponent/no_seeds"
+    }
+   ],
    "requirements": {
     "random_pool": false,
     "teams_exactly": 2
@@ -2497,6 +3520,11 @@
    "name": "Opponent catches on Fire",
    "texture": "opponent/no_fire",
    "id": "OPPONENT_CATCHES_ON_FIRE",
+   "render": [
+    {
+     "texture": "custom/opponent/no_fire"
+    }
+   ],
    "requirements": {
     "teams_exactly": 2
    }
@@ -2511,6 +3539,14 @@
     "minecraft:player_head"
    ],
    "id": "OPPONENT_DIES_3_TIMES",
+   "render": [
+    {
+     "texture": "custom/opponent/no_death"
+    },
+    {
+     "count": "3"
+    }
+   ],
    "requirements": {
     "teams_exactly": 2
    }
@@ -2522,6 +3558,11 @@
    "name": "Opponent dies",
    "texture": "opponent/no_death",
    "id": "OPPONENT_DIES",
+   "render": [
+    {
+     "texture": "custom/opponent/no_death"
+    }
+   ],
    "requirements": {
     "teams_exactly": 2
    }
@@ -2566,6 +3607,14 @@
     "minecraft:player_head"
    ],
    "id": "OPPONENT_TAKES_100_DAMAGE",
+   "render": [
+    {
+     "texture": "custom/opponent/opponent_takes_100_damage"
+    },
+    {
+     "count": "100"
+    }
+   ],
    "requirements": {
     "teams_exactly": 2
    }
@@ -2577,6 +3626,11 @@
    "name": "Opponent takes Fall Damage",
    "texture": "opponent/no_fall_damage",
    "id": "OPPONENT_TAKES_FALL_DAMAGE",
+   "render": [
+    {
+     "texture": "custom/opponent/no_fall_damage"
+    }
+   ],
    "requirements": {
     "teams_exactly": 2
    }
@@ -2588,6 +3642,11 @@
    "name": "Opponent touches Water",
    "texture": "opponent/no_water",
    "id": "OPPONENT_TOUCHES_WATER",
+   "render": [
+    {
+     "texture": "custom/opponent/no_water"
+    }
+   ],
    "requirements": {
     "teams_exactly": 2
    }
@@ -2599,6 +3658,11 @@
    "name": "Opponent eats Food",
    "texture": "opponent/no_food",
    "id": "OPPONENT_EATS_FOOD",
+   "render": [
+    {
+     "texture": "custom/opponent/no_food"
+    }
+   ],
    "requirements": {
     "random_pool": false,
     "teams_exactly": 2
@@ -2614,7 +3678,16 @@
     "minecraft:dye"
    ],
    "icon": "minecraft:dye",
-   "id": "TAKE_200_DAMAGE"
+   "id": "TAKE_200_DAMAGE",
+   "tooltip": true,
+   "render": [
+    {
+     "texture": "custom/take_200_damage"
+    },
+    {
+     "count": "200"
+    }
+   ]
   },
   {
    "class": "ReachNetherRoofGoal",
@@ -2626,7 +3699,15 @@
     "minecraft:bedrock"
    ],
    "icon": "minecraft:bedrock",
-   "id": "REACH_NETHER_ROOF"
+   "id": "REACH_NETHER_ROOF",
+   "render": [
+    {
+     "item": "minecraft:bedrock"
+    },
+    {
+     "texture": "custom/up_arrow"
+    }
+   ]
   },
   {
    "class": "HaveMostXPLevelsGoal",
@@ -2635,6 +3716,11 @@
    "name": "Have the most XP Levels",
    "texture": "more_level",
    "id": "HAVE_MORE_XP_LEVELS",
+   "render": [
+    {
+     "texture": "custom/more_level"
+    }
+   ],
    "requirements": {
     "teams_min": 2
    }
@@ -2649,6 +3735,11 @@
     "minecraft:freeze"
    ],
    "id": "FREEZE_TO_DEATH",
+   "render": [
+    {
+     "texture": "custom/death/die_to_freezing"
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:grove",
@@ -2666,7 +3757,16 @@
     "minecraft:dye"
    ],
    "amount": 100,
-   "id": "KILL_100_MOBS"
+   "id": "KILL_100_MOBS",
+   "tooltip": true,
+   "render": [
+    {
+     "texture": "custom/kill/kill_100_mobs"
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "Deal400DamageGoal",
@@ -2678,7 +3778,16 @@
     "minecraft:dye"
    ],
    "icon": "minecraft:dye",
-   "id": "DEAL_400_DAMAGE"
+   "id": "DEAL_400_DAMAGE",
+   "tooltip": true,
+   "render": [
+    {
+     "texture": "custom/deal_400_damage"
+    },
+    {
+     "count": "400"
+    }
+   ]
   },
   {
    "class": "Sprint1KmGoal",
@@ -2689,7 +3798,15 @@
    "items": [
     "minecraft:sugar"
    ],
-   "id": "SPRINT_1_KM"
+   "id": "SPRINT_1_KM",
+   "render": [
+    {
+     "texture": "custom/sprint_1km"
+    },
+    {
+     "count": "1km"
+    }
+   ]
   },
   {
    "class": "GetHiredHelpAdvancementGoal",
@@ -2742,7 +3859,12 @@
    "items": [
     "minecraft:shield"
    ],
-   "id": "PUT_BANNER_ON_SHIELD"
+   "id": "PUT_BANNER_ON_SHIELD",
+   "render": [
+    {
+     "texture": "custom/apply_banner_shield"
+    }
+   ]
   },
   {
    "class": "HaveMostUniqueCraftsGoal",
@@ -2755,6 +3877,14 @@
    ],
    "icon": "minecraft:crafting_table",
    "id": "HAVE_MORE_UNIQUE_CRAFTS",
+   "render": [
+    {
+     "item": "minecraft:crafting_table"
+    },
+    {
+     "texture": "custom/up_arrow"
+    }
+   ],
    "requirements": {
     "teams_min": 2
    }
@@ -2765,7 +3895,12 @@
    "category": "misc",
    "name": "Have your Shield disabled",
    "texture": "disable_shield",
-   "id": "HAVE_YOUR_SHIELD_DISABLED"
+   "id": "HAVE_YOUR_SHIELD_DISABLED",
+   "render": [
+    {
+     "texture": "custom/disable_shield"
+    }
+   ]
   },
   {
    "class": "ItemFrameInItemFrameGoal",
@@ -2773,7 +3908,12 @@
    "category": "misc",
    "name": "Put Item Frame in an Item Frame",
    "texture": "item_frame_in_item_frame",
-   "id": "ITEM_FRAME_IN_ITEM_FRAME"
+   "id": "ITEM_FRAME_IN_ITEM_FRAME",
+   "render": [
+    {
+     "texture": "custom/item_frame_in_item_frame"
+    }
+   ]
   },
   {
    "class": "FillCampfireWithFoodGoal",
@@ -2781,7 +3921,12 @@
    "category": "misc",
    "name": "Fill Campfire with 4 Food Items",
    "texture": "campfire",
-   "id": "FILL_CAMPFIRE"
+   "id": "FILL_CAMPFIRE",
+   "render": [
+    {
+     "texture": "custom/campfire"
+    }
+   ]
   },
   {
    "class": "PutFlowerInPotGoal",
@@ -2792,7 +3937,12 @@
    "stats": [
     "minecraft:pot_flower"
    ],
-   "id": "PUT_FLOWER_IN_POT"
+   "id": "PUT_FLOWER_IN_POT",
+   "render": [
+    {
+     "texture": "custom/flower_in_a_pot"
+    }
+   ]
   },
   {
    "class": "KillAllRaidMobsGoal",
@@ -2813,6 +3963,15 @@
    ],
    "icon": "minecraft:villager_spawn_egg",
    "id": "KILL_ALL_RAID_MOBS",
+   "tooltip": true,
+   "render": [
+    {
+     "texture": "custom/status_effect/bad_omen"
+    },
+    {
+     "count": "MOBS.size()"
+    }
+   ],
    "requirements": {
     "structures": [
      "minecraft:pillager_outpost",
@@ -2826,7 +3985,12 @@
    "category": "misc",
    "name": "Fill Chiseled Bookshelf",
    "texture": "fill_chiseled_bookshelf",
-   "id": "FILL_CHISELED_BOOKSHELF"
+   "id": "FILL_CHISELED_BOOKSHELF",
+   "render": [
+    {
+     "texture": "custom/fill_chiseled_bookshelf"
+    }
+   ]
   },
   {
    "class": "UseBrushOnSuspiciousBlock",
@@ -2841,6 +4005,17 @@
    ],
    "icon": "minecraft:brush",
    "id": "USE_BRUSH_ON_SUSPICIOUS_BLOCK",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:suspicious_gravel",
+      "minecraft:suspicious_sand"
+     ]
+    },
+    {
+     "texture": "custom/brush_overlay"
+    }
+   ],
    "requirements": {
     "structures": [
      "minecraft:ocean_ruin_warm",
@@ -2856,7 +4031,12 @@
    "named": [
     "minecraft:textures/item/crossbow_firework.png"
    ],
-   "id": "SHOOT_FIREWORK_FROM_CROSSBOW"
+   "id": "SHOOT_FIREWORK_FROM_CROSSBOW",
+   "render": [
+    {
+     "texture": "item/crossbow_firework"
+    }
+   ]
   },
   {
    "class": "MineCrafterGoal",
@@ -2875,7 +4055,12 @@
    "category": "misc",
    "name": "Light a Candle",
    "texture": "light_candle",
-   "id": "LIGHT_CANDLE"
+   "id": "LIGHT_CANDLE",
+   "render": [
+    {
+     "texture": "custom/light_candle"
+    }
+   ]
   },
   {
    "class": "WearFullEnchantedArmorGoal",
@@ -2904,7 +4089,41 @@
     "minecraft:iron_boots",
     "minecraft:diamond_boots"
    ],
-   "id": "WEAR_FULL_ENCHANTED_ARMOR"
+   "id": "WEAR_FULL_ENCHANTED_ARMOR",
+   "render": [
+    {
+     "glint_cycle": [
+      [
+       "minecraft:leather_helmet",
+       "minecraft:golden_helmet",
+       "minecraft:chainmail_helmet",
+       "minecraft:iron_helmet",
+       "minecraft:diamond_helmet"
+      ],
+      [
+       "minecraft:leather_chestplate",
+       "minecraft:golden_chestplate",
+       "minecraft:chainmail_chestplate",
+       "minecraft:iron_chestplate",
+       "minecraft:diamond_chestplate"
+      ],
+      [
+       "minecraft:leather_leggings",
+       "minecraft:golden_leggings",
+       "minecraft:chainmail_leggings",
+       "minecraft:iron_leggings",
+       "minecraft:diamond_leggings"
+      ],
+      [
+       "minecraft:leather_boots",
+       "minecraft:golden_boots",
+       "minecraft:chainmail_boots",
+       "minecraft:iron_boots",
+       "minecraft:diamond_boots"
+      ]
+     ]
+    }
+   ]
   },
   {
    "class": "PutWolfArmorOnWolfGoal",
@@ -2937,6 +4156,11 @@
     "minecraft:breeze"
    ],
    "id": "KILL_BREEZE_USING_WIND_CHARGE",
+   "render": [
+    {
+     "texture": "custom/kill/breeze_wind_charge"
+    }
+   ],
    "requirements": {
     "structures": [
      "minecraft:trial_chambers"
@@ -2953,6 +4177,7 @@
    ],
    "icon": "minecraft:bundle",
    "id": "FILL_BUNDLE_WITH_BUNDLES",
+   "icon_count": "16",
    "requirements": {
     "random_pool": false
    }
@@ -2966,7 +4191,17 @@
     "minecraft:arrow"
    ],
    "amount": 64,
-   "id": "OBTAIN_64_ARROWS"
+   "id": "OBTAIN_64_ARROWS",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:arrow"
+     ]
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "BreedArmadilloGoal",
@@ -2978,6 +4213,11 @@
     "minecraft:armadillo"
    ],
    "id": "BREED_ARMADILLO",
+   "render": [
+    {
+     "texture": "custom/breed/breed_armadillo"
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:savanna",
@@ -2999,6 +4239,11 @@
     "minecraft:camel"
    ],
    "id": "BREED_CAMEL",
+   "render": [
+    {
+     "texture": "custom/breed/breed_camel"
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:desert"
@@ -3012,7 +4257,16 @@
    "name": "Craft 20 Unique Items",
    "amount": 20,
    "icon": "minecraft:crafting_table",
-   "id": "CRAFT_20_UNIQUE_ITEMS"
+   "id": "CRAFT_20_UNIQUE_ITEMS",
+   "tooltip": true,
+   "render": [
+    {
+     "item": "minecraft:crafting_table"
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "Craft50UniqueItemsGoal",
@@ -3021,7 +4275,16 @@
    "name": "Craft 50 Unique Items",
    "amount": 50,
    "icon": "minecraft:crafting_table",
-   "id": "CRAFT_50_UNIQUE_ITEMS"
+   "id": "CRAFT_50_UNIQUE_ITEMS",
+   "tooltip": true,
+   "render": [
+    {
+     "item": "minecraft:crafting_table"
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "Craft100UniqueItemsGoal",
@@ -3030,7 +4293,16 @@
    "name": "Craft 100 Unique Items",
    "amount": 100,
    "icon": "minecraft:crafting_table",
-   "id": "CRAFT_100_UNIQUE_ITEMS"
+   "id": "CRAFT_100_UNIQUE_ITEMS",
+   "tooltip": true,
+   "render": [
+    {
+     "item": "minecraft:crafting_table"
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "DieByDrowningGoal",
@@ -3041,7 +4313,12 @@
    "damage_types": [
     "minecraft:drown"
    ],
-   "id": "DIE_BY_DROWNING"
+   "id": "DIE_BY_DROWNING",
+   "render": [
+    {
+     "texture": "custom/death/die_to_drowning"
+    }
+   ]
   },
   {
    "class": "DieToVoidGoal",
@@ -3052,7 +4329,12 @@
    "damage_types": [
     "minecraft:fell_out_of_world"
    ],
-   "id": "DIE_TO_VOID"
+   "id": "DIE_TO_VOID",
+   "render": [
+    {
+     "texture": "custom/death/die_to_void"
+    }
+   ]
   },
   {
    "class": "DieToPufferfishGoal",
@@ -3064,6 +4346,11 @@
     "minecraft:pufferfish"
    ],
    "id": "DIE_TO_PUFFERFISH",
+   "render": [
+    {
+     "texture": "custom/death/die_to_pufferfish"
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:warm_ocean",
@@ -3081,7 +4368,12 @@
    "damage_types": [
     "minecraft:trident"
    ],
-   "id": "DIE_TO_TRIDENT"
+   "id": "DIE_TO_TRIDENT",
+   "render": [
+    {
+     "texture": "custom/death/die_to_trident"
+    }
+   ]
   },
   {
    "class": "DieToWardenGoal",
@@ -3093,6 +4385,11 @@
     "minecraft:warden"
    ],
    "id": "DIE_TO_WARDEN",
+   "render": [
+    {
+     "texture": "custom/death/die_to_warden"
+    }
+   ],
    "requirements": {
     "structures": [
      "minecraft:ancient_city"
@@ -3119,6 +4416,11 @@
     "minecraft:bogged"
    ],
    "id": "KILL_BOGGED",
+   "render": [
+    {
+     "texture": "custom/kill/kill_bogged"
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:swamp",
@@ -3136,6 +4438,11 @@
     "minecraft:husk"
    ],
    "id": "KILL_HUSK",
+   "render": [
+    {
+     "texture": "custom/undead/kill_husk"
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:desert"
@@ -3152,6 +4459,11 @@
     "minecraft:parched"
    ],
    "id": "KILL_PARCHED",
+   "render": [
+    {
+     "texture": "custom/kill/kill_parched"
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:desert"
@@ -3187,6 +4499,11 @@
     "minecraft:warden"
    ],
    "id": "KILL_WARDEN",
+   "render": [
+    {
+     "texture": "custom/kill/kill_warden"
+    }
+   ],
    "requirements": {
     "structures": [
      "minecraft:ancient_city"
@@ -3272,7 +4589,34 @@
     "minecraft:bolt_armor_trim_smithing_template"
    ],
    "amount": 2,
-   "id": "OBTAIN_2_ARMOR_TRIMS"
+   "id": "OBTAIN_2_ARMOR_TRIMS",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:sentry_armor_trim_smithing_template",
+      "minecraft:dune_armor_trim_smithing_template",
+      "minecraft:coast_armor_trim_smithing_template",
+      "minecraft:wild_armor_trim_smithing_template",
+      "minecraft:ward_armor_trim_smithing_template",
+      "minecraft:eye_armor_trim_smithing_template",
+      "minecraft:vex_armor_trim_smithing_template",
+      "minecraft:tide_armor_trim_smithing_template",
+      "minecraft:snout_armor_trim_smithing_template",
+      "minecraft:rib_armor_trim_smithing_template",
+      "minecraft:spire_armor_trim_smithing_template",
+      "minecraft:wayfinder_armor_trim_smithing_template",
+      "minecraft:shaper_armor_trim_smithing_template",
+      "minecraft:silence_armor_trim_smithing_template",
+      "minecraft:raiser_armor_trim_smithing_template",
+      "minecraft:host_armor_trim_smithing_template",
+      "minecraft:flow_armor_trim_smithing_template",
+      "minecraft:bolt_armor_trim_smithing_template"
+     ]
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "Obtain3HorseArmorsGoal",
@@ -3288,7 +4632,22 @@
     "minecraft:netherite_horse_armor"
    ],
    "amount": 3,
-   "id": "OBTAIN_3_HORSE_ARMORS"
+   "id": "OBTAIN_3_HORSE_ARMORS",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:leather_horse_armor",
+      "minecraft:copper_horse_armor",
+      "minecraft:iron_horse_armor",
+      "minecraft:golden_horse_armor",
+      "minecraft:diamond_horse_armor",
+      "minecraft:netherite_horse_armor"
+     ]
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "Obtain3UniqueBannerPatternsGoal",
@@ -3308,7 +4667,26 @@
     "minecraft:bordure_indented_banner_pattern"
    ],
    "amount": 3,
-   "id": "OBTAIN_3_BANNER_PATTERNS"
+   "id": "OBTAIN_3_BANNER_PATTERNS",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:flower_banner_pattern",
+      "minecraft:creeper_banner_pattern",
+      "minecraft:skull_banner_pattern",
+      "minecraft:mojang_banner_pattern",
+      "minecraft:globe_banner_pattern",
+      "minecraft:piglin_banner_pattern",
+      "minecraft:flow_banner_pattern",
+      "minecraft:guster_banner_pattern",
+      "minecraft:field_masoned_banner_pattern",
+      "minecraft:bordure_indented_banner_pattern"
+     ]
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "Obtain16GlowLichenGoal",
@@ -3319,7 +4697,17 @@
     "minecraft:glow_lichen"
    ],
    "amount": 16,
-   "id": "OBTAIN_16_GLOW_LICHEN"
+   "id": "OBTAIN_16_GLOW_LICHEN",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:glow_lichen"
+     ]
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "Obtain32ArrowsGoal",
@@ -3331,7 +4719,18 @@
     "minecraft:spectral_arrow"
    ],
    "amount": 32,
-   "id": "OBTAIN_32_ARROWS"
+   "id": "OBTAIN_32_ARROWS",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:arrow",
+      "minecraft:spectral_arrow"
+     ]
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "Obtain64CoarseDirtGoal",
@@ -3342,7 +4741,17 @@
     "minecraft:coarse_dirt"
    ],
    "amount": 64,
-   "id": "OBTAIN_64_COARSE_DIRT"
+   "id": "OBTAIN_64_COARSE_DIRT",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:coarse_dirt"
+     ]
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "ObtainCopperToolsGoal",
@@ -3356,7 +4765,18 @@
     "minecraft:copper_sword",
     "minecraft:copper_shovel"
    ],
-   "id": "OBTAIN_COPPER_TOOLS"
+   "id": "OBTAIN_COPPER_TOOLS",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:copper_axe",
+      "minecraft:copper_hoe",
+      "minecraft:copper_pickaxe",
+      "minecraft:copper_sword",
+      "minecraft:copper_shovel"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainAmethystBlockGoal",
@@ -3366,7 +4786,14 @@
    "items": [
     "minecraft:amethyst_block"
    ],
-   "id": "OBTAIN_AMETHYST_BLOCK"
+   "id": "OBTAIN_AMETHYST_BLOCK",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:amethyst_block"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainResinBlockGoal",
@@ -3377,6 +4804,13 @@
     "minecraft:resin_block"
    ],
    "id": "OBTAIN_RESIN_BLOCK",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:resin_block"
+     ]
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:pale_garden"
@@ -3391,7 +4825,14 @@
    "items": [
     "minecraft:bone_block"
    ],
-   "id": "OBTAIN_BONE_BLOCK"
+   "id": "OBTAIN_BONE_BLOCK",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:bone_block"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainColoredHarnessGoal",
@@ -3402,6 +4843,13 @@
     "minecraft:harness"
    ],
    "id": "OBTAIN_COLORED_HARNESS",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:harness"
+     ]
+    }
+   ],
    "data": "dye"
   },
   {
@@ -3413,7 +4861,14 @@
     "minecraft:copper_chest"
    ],
    "amount": 1,
-   "id": "OBTAIN_COPPER_CHEST"
+   "id": "OBTAIN_COPPER_CHEST",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:copper_chest"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainDeadBushGoal",
@@ -3424,6 +4879,13 @@
     "minecraft:dead_bush"
    ],
    "id": "OBTAIN_DEAD_BUSH",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:dead_bush"
+     ]
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:desert",
@@ -3441,7 +4903,14 @@
    "items": [
     "minecraft:dried_kelp_block"
    ],
-   "id": "OBTAIN_DRIED_KELP_BLOCK"
+   "id": "OBTAIN_DRIED_KELP_BLOCK",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:dried_kelp_block"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainEmeraldBlockGoal",
@@ -3451,7 +4920,14 @@
    "items": [
     "minecraft:emerald_block"
    ],
-   "id": "OBTAIN_EMERALD_BLOCK"
+   "id": "OBTAIN_EMERALD_BLOCK",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:emerald_block"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainAllFurnacesGoal",
@@ -3463,7 +4939,16 @@
     "minecraft:blast_furnace",
     "minecraft:smoker"
    ],
-   "id": "OBTAIN_ALL_FURNACES"
+   "id": "OBTAIN_ALL_FURNACES",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:furnace",
+      "minecraft:blast_furnace",
+      "minecraft:smoker"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainAllTorchesGoal",
@@ -3476,7 +4961,17 @@
     "minecraft:soul_torch",
     "minecraft:copper_torch"
    ],
-   "id": "OBTAIN_ALL_TORCHES"
+   "id": "OBTAIN_ALL_TORCHES",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:torch",
+      "minecraft:redstone_torch",
+      "minecraft:soul_torch",
+      "minecraft:copper_torch"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainGildedBlackstoneGoal",
@@ -3487,6 +4982,13 @@
     "minecraft:gilded_blackstone"
    ],
    "id": "OBTAIN_GILDED_BLACKSTONE",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:gilded_blackstone"
+     ]
+    }
+   ],
    "requirements": {
     "random_pool": false
    }
@@ -3499,7 +5001,14 @@
    "items": [
     "minecraft:lodestone"
    ],
-   "id": "OBTAIN_LODESTONE"
+   "id": "OBTAIN_LODESTONE",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:lodestone"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainNetheriteScrapGoal",
@@ -3509,7 +5018,14 @@
    "items": [
     "minecraft:netherite_scrap"
    ],
-   "id": "OBTAIN_NETHERITE_SCRAP"
+   "id": "OBTAIN_NETHERITE_SCRAP",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:netherite_scrap"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainPotterySherdGoal",
@@ -3543,6 +5059,35 @@
    ],
    "amount": 1,
    "id": "OBTAIN_POTTERY_SHERD",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:angler_pottery_sherd",
+      "minecraft:archer_pottery_sherd",
+      "minecraft:arms_up_pottery_sherd",
+      "minecraft:blade_pottery_sherd",
+      "minecraft:brewer_pottery_sherd",
+      "minecraft:burn_pottery_sherd",
+      "minecraft:danger_pottery_sherd",
+      "minecraft:explorer_pottery_sherd",
+      "minecraft:flow_pottery_sherd",
+      "minecraft:friend_pottery_sherd",
+      "minecraft:guster_pottery_sherd",
+      "minecraft:heart_pottery_sherd",
+      "minecraft:heartbreak_pottery_sherd",
+      "minecraft:howl_pottery_sherd",
+      "minecraft:miner_pottery_sherd",
+      "minecraft:mourner_pottery_sherd",
+      "minecraft:plenty_pottery_sherd",
+      "minecraft:prize_pottery_sherd",
+      "minecraft:scrape_pottery_sherd",
+      "minecraft:sheaf_pottery_sherd",
+      "minecraft:shelter_pottery_sherd",
+      "minecraft:skull_pottery_sherd",
+      "minecraft:snort_pottery_sherd"
+     ]
+    }
+   ],
    "requirements": {
     "structures": [
      "minecraft:desert_pyramid",
@@ -3561,6 +5106,13 @@
     "minecraft:resin_brick_wall"
    ],
    "id": "OBTAIN_RESIN_BRICK_WALL",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:resin_brick_wall"
+     ]
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:pale_garden"
@@ -3575,7 +5127,14 @@
    "items": [
     "minecraft:smooth_basalt"
    ],
-   "id": "OBTAIN_SMOOTH_BASALT"
+   "id": "OBTAIN_SMOOTH_BASALT",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:smooth_basalt"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainSmoothQuartzStairsGoal",
@@ -3585,7 +5144,14 @@
    "items": [
     "minecraft:smooth_quartz_stairs"
    ],
-   "id": "OBTAIN_SMOOTH_QUARTZ_STAIRS"
+   "id": "OBTAIN_SMOOTH_QUARTZ_STAIRS",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:smooth_quartz_stairs"
+     ]
+    }
+   ]
   },
   {
    "class": "ObtainTintedGlassGoal",
@@ -3595,7 +5161,14 @@
    "items": [
     "minecraft:tinted_glass"
    ],
-   "id": "OBTAIN_TINTED_GLASS"
+   "id": "OBTAIN_TINTED_GLASS",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:tinted_glass"
+     ]
+    }
+   ]
   },
   {
    "class": "ReachXPLevel10Goal",
@@ -3604,7 +5177,12 @@
    "name": "Reach XP level 10",
    "texture": "experience/level_10",
    "amount": 10,
-   "id": "REACH_EXP_LEVEL_10"
+   "id": "REACH_EXP_LEVEL_10",
+   "render": [
+    {
+     "texture": "custom/experience/level_10"
+    }
+   ]
   },
   {
    "class": "ReachXPLevel20Goal",
@@ -3613,7 +5191,12 @@
    "name": "Reach XP level 20",
    "texture": "experience/level_20",
    "amount": 20,
-   "id": "REACH_EXP_LEVEL_20"
+   "id": "REACH_EXP_LEVEL_20",
+   "render": [
+    {
+     "texture": "custom/experience/level_20"
+    }
+   ]
   },
   {
    "class": "TameNautilusGoal",
@@ -3625,6 +5208,11 @@
     "minecraft:nautilus"
    ],
    "id": "TAME_NAUTILUS",
+   "render": [
+    {
+     "texture": "custom/tame/tame_nautilus"
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:ocean",
@@ -3660,7 +5248,15 @@
    "category": "misc",
    "name": "Use Glow Ink on Crimson or Warped Sign",
    "texture": "glow_crimson_sign",
-   "id": "USE_GLOW_INK_NETHER"
+   "id": "USE_GLOW_INK_NETHER",
+   "render": [
+    {
+     "cycle_textures": [
+      "custom/glow_crimson_sign",
+      "custom/glow_warped_sign"
+     ]
+    }
+   ]
   },
   {
    "class": "UseGlowInkWarpedGoal",
@@ -3668,7 +5264,12 @@
    "category": "misc",
    "name": "Use Glow Ink on Warped Sign",
    "texture": "glow_warped_sign",
-   "id": "USE_GLOW_INK_WARPED"
+   "id": "USE_GLOW_INK_WARPED",
+   "render": [
+    {
+     "texture": "custom/glow_warped_sign"
+    }
+   ]
   },
   {
    "class": "WearCopperArmorGoal",
@@ -3681,7 +5282,17 @@
     "minecraft:copper_leggings",
     "minecraft:copper_boots"
    ],
-   "id": "WEAR_COPPER_ARMOR"
+   "id": "WEAR_COPPER_ARMOR",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:copper_helmet",
+      "minecraft:copper_chestplate",
+      "minecraft:copper_leggings",
+      "minecraft:copper_boots"
+     ]
+    }
+   ]
   },
   {
    "class": "BreakAnyArmorGoal",
@@ -3694,7 +5305,17 @@
     "minecraft:golden_leggings",
     "minecraft:chainmail_boots"
    ],
-   "id": "BREAK_ANY_ARMOR"
+   "id": "BREAK_ANY_ARMOR",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:leather_helmet",
+      "minecraft:iron_chestplate",
+      "minecraft:golden_leggings",
+      "minecraft:chainmail_boots"
+     ]
+    }
+   ]
   },
   {
    "class": "BreakAnyToolGoal",
@@ -3711,7 +5332,18 @@
     "minecraft:wooden_pickaxe",
     "minecraft:stone_axe"
    ],
-   "id": "BREAK_ANY_TOOL"
+   "id": "BREAK_ANY_TOOL",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:wooden_pickaxe",
+      "minecraft:stone_axe",
+      "minecraft:fishing_rod",
+      "minecraft:shears",
+      "minecraft:flint_and_steel"
+     ]
+    }
+   ]
   },
   {
    "class": "BreakFishingRodGoal",
@@ -3764,7 +5396,16 @@
    "name": "Compost 3 Unique Foods",
    "amount": 3,
    "icon": "minecraft:composter",
-   "id": "COMPOST_3_UNIQUE_FOODS"
+   "id": "COMPOST_3_UNIQUE_FOODS",
+   "tooltip": true,
+   "render": [
+    {
+     "item": "minecraft:composter"
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "Compost5UniqueFoodsGoal",
@@ -3773,7 +5414,16 @@
    "name": "Compost 5 Unique Foods",
    "amount": 5,
    "icon": "minecraft:composter",
-   "id": "COMPOST_5_UNIQUE_FOODS"
+   "id": "COMPOST_5_UNIQUE_FOODS",
+   "tooltip": true,
+   "render": [
+    {
+     "item": "minecraft:composter"
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "Compost7UniqueFoodsGoal",
@@ -3782,7 +5432,16 @@
    "name": "Compost 7 Unique Foods",
    "amount": 7,
    "icon": "minecraft:composter",
-   "id": "COMPOST_7_UNIQUE_FOODS"
+   "id": "COMPOST_7_UNIQUE_FOODS",
+   "tooltip": true,
+   "render": [
+    {
+     "item": "minecraft:composter"
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "ConstructCopperGolemGoal",
@@ -3802,6 +5461,11 @@
    "name": "Duplicate Allay",
    "texture": "duplicate_allay",
    "id": "DUPLICATE_ALLAY",
+   "render": [
+    {
+     "texture": "custom/duplicate_allay"
+    }
+   ],
    "requirements": {
     "structures": [
      "minecraft:pillager_outpost",
@@ -3828,6 +5492,17 @@
     "minecraft:suspicious_stew"
    ],
    "id": "EAT_ALL_SOUPS",
+   "tooltip": true,
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:mushroom_stew",
+      "minecraft:rabbit_stew",
+      "minecraft:beetroot_soup",
+      "minecraft:suspicious_stew"
+     ]
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:desert",
@@ -3850,7 +5525,12 @@
    "category": "misc",
    "name": "Enrage Enderman",
    "texture": "enrage_enderman",
-   "id": "ENRAGE_ENDERMAN"
+   "id": "ENRAGE_ENDERMAN",
+   "render": [
+    {
+     "texture": "custom/enrage_enderman"
+    }
+   ]
   },
   {
    "class": "ExplodeEndCrystalGoal",
@@ -3892,7 +5572,15 @@
    "name": "Leash 4 unique Mobs at once",
    "amount": 4,
    "icon": "minecraft:lead",
-   "id": "LEASH_4_UNIQUE_MOBS"
+   "id": "LEASH_4_UNIQUE_MOBS",
+   "render": [
+    {
+     "item": "minecraft:lead"
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "Leash6UniqueMobsGoal",
@@ -3901,7 +5589,15 @@
    "name": "Leash 6 unique Mobs at once",
    "amount": 6,
    "icon": "minecraft:lead",
-   "id": "LEASH_6_UNIQUE_MOBS"
+   "id": "LEASH_6_UNIQUE_MOBS",
+   "render": [
+    {
+     "item": "minecraft:lead"
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "Leash8UniqueMobsGoal",
@@ -3910,7 +5606,15 @@
    "name": "Leash 8 unique Mobs at once",
    "amount": 8,
    "icon": "minecraft:lead",
-   "id": "LEASH_8_UNIQUE_MOBS"
+   "id": "LEASH_8_UNIQUE_MOBS",
+   "render": [
+    {
+     "item": "minecraft:lead"
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "LeashIronGolemGoal",
@@ -3918,7 +5622,12 @@
    "category": "leash",
    "name": "Leash an Iron Golem",
    "texture": "leash/leash_iron_golem",
-   "id": "LEASH_IRON_GOLEM"
+   "id": "LEASH_IRON_GOLEM",
+   "render": [
+    {
+     "texture": "custom/leash/leash_iron_golem"
+    }
+   ]
   },
   {
    "class": "LockMapGoal",
@@ -3954,6 +5663,19 @@
    ],
    "amount": 3,
    "id": "MINE_3_TYPES_OF_ICE",
+   "tooltip": true,
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:ice",
+      "minecraft:packed_ice",
+      "minecraft:blue_ice"
+     ]
+    },
+    {
+     "count": "{amount}"
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:ice_spikes",
@@ -3972,7 +5694,12 @@
    "entities": [
     "minecraft:ghast"
    ],
-   "id": "NAME_GHAST_DINNERBONE"
+   "id": "NAME_GHAST_DINNERBONE",
+   "render": [
+    {
+     "texture": "custom/name/name_ghast"
+    }
+   ]
   },
   {
    "class": "NameSheepJebGoal",
@@ -3983,7 +5710,12 @@
    "entities": [
     "minecraft:sheep"
    ],
-   "id": "NAME_SHEEP_JEB"
+   "id": "NAME_SHEEP_JEB",
+   "render": [
+    {
+     "texture": "custom/name/name_sheep"
+    }
+   ]
   },
   {
    "class": "NameIronGolemDinnerboneGoal",
@@ -3994,7 +5726,12 @@
    "entities": [
     "minecraft:iron_golem"
    ],
-   "id": "NAME_IRON_GOLEM_DINNERBONE"
+   "id": "NAME_IRON_GOLEM_DINNERBONE",
+   "render": [
+    {
+     "texture": "custom/name/name_iron_golem"
+    }
+   ]
   },
   {
    "class": "ObtainStackOf64Goal",
@@ -4007,7 +5744,20 @@
     "minecraft:oak_log",
     "minecraft:sand"
    ],
-   "id": "OBTAIN_STACK_OF_64"
+   "id": "OBTAIN_STACK_OF_64",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:cobblestone",
+      "minecraft:dirt",
+      "minecraft:oak_log",
+      "minecraft:sand"
+     ]
+    },
+    {
+     "count": "64"
+    }
+   ]
   },
   {
    "class": "Spy10UniqueMobsGoal",
@@ -4016,7 +5766,16 @@
    "name": "Spy on 10 Unique Mobs",
    "amount": 10,
    "icon": "minecraft:spyglass",
-   "id": "SPY_10_UNIQUE_MOBS"
+   "id": "SPY_10_UNIQUE_MOBS",
+   "tooltip": true,
+   "render": [
+    {
+     "item": "minecraft:spyglass"
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "Spy15UniqueMobsGoal",
@@ -4025,7 +5784,16 @@
    "name": "Spy on 15 Unique Mobs",
    "amount": 15,
    "icon": "minecraft:spyglass",
-   "id": "SPY_15_UNIQUE_MOBS"
+   "id": "SPY_15_UNIQUE_MOBS",
+   "tooltip": true,
+   "render": [
+    {
+     "item": "minecraft:spyglass"
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "Spy20UniqueMobsGoal",
@@ -4034,7 +5802,16 @@
    "name": "Spy on 20 Unique Mobs",
    "amount": 20,
    "icon": "minecraft:spyglass",
-   "id": "SPY_20_UNIQUE_MOBS"
+   "id": "SPY_20_UNIQUE_MOBS",
+   "tooltip": true,
+   "render": [
+    {
+     "item": "minecraft:spyglass"
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "Spy25UniqueMobsGoal",
@@ -4043,7 +5820,16 @@
    "name": "Spy on 25 Unique Mobs",
    "amount": 25,
    "icon": "minecraft:spyglass",
-   "id": "SPY_25_UNIQUE_MOBS"
+   "id": "SPY_25_UNIQUE_MOBS",
+   "tooltip": true,
+   "render": [
+    {
+     "item": "minecraft:spyglass"
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "SpyEndermanGoal",
@@ -4054,7 +5840,12 @@
    "entities": [
     "minecraft:enderman"
    ],
-   "id": "SPY_ENDERMAN"
+   "id": "SPY_ENDERMAN",
+   "render": [
+    {
+     "texture": "custom/spy/spy_enderman"
+    }
+   ]
   },
   {
    "class": "SpyIronGolemGoal",
@@ -4066,6 +5857,11 @@
     "minecraft:iron_golem"
    ],
    "id": "SPY_IRON_GOLEM",
+   "render": [
+    {
+     "texture": "custom/spy/spy_iron_golem"
+    }
+   ],
    "requirements": {
     "structures": [
      "minecraft:village_desert",
@@ -4086,6 +5882,11 @@
     "minecraft:piglin_brute"
    ],
    "id": "SPY_PIGLIN_BRUTE",
+   "render": [
+    {
+     "texture": "custom/spy/spy_piglin_brute"
+    }
+   ],
    "requirements": {
     "random_pool": false
    }
@@ -4096,7 +5897,12 @@
    "category": "misc",
    "name": "Teleport through Nether Portal using Ender Pearl",
    "texture": "pearl_nether_portal",
-   "id": "PEARL_THROUGH_NETHER_PORTAL"
+   "id": "PEARL_THROUGH_NETHER_PORTAL",
+   "render": [
+    {
+     "texture": "custom/pearl_nether_portal"
+    }
+   ]
   },
   {
    "class": "VisitAllCaveBiomesGoal",
@@ -4113,7 +5919,25 @@
     "minecraft:dripstone_caves",
     "minecraft:deep_dark"
    ],
-   "id": "VISIT_ALL_CAVE_BIOMES"
+   "id": "VISIT_ALL_CAVE_BIOMES",
+   "tooltip": true,
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:moss_block",
+      "minecraft:pointed_dripstone",
+      "minecraft:sculk"
+     ]
+    }
+   ],
+   "requirements": {
+    "biomes": [
+     "minecraft:lush_caves",
+     "minecraft:dripstone_caves",
+     "minecraft:deep_dark"
+    ],
+    "all_biomes": true
+   }
   },
   {
    "class": "WearUniqueArmorGoal",
@@ -4126,7 +5950,17 @@
     "minecraft:golden_leggings",
     "minecraft:diamond_boots"
    ],
-   "id": "WEAR_UNIQUE_ARMOR"
+   "id": "WEAR_UNIQUE_ARMOR",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:leather_helmet",
+      "minecraft:iron_chestplate",
+      "minecraft:golden_leggings",
+      "minecraft:diamond_boots"
+     ]
+    }
+   ]
   },
   {
    "class": "Visit10UniqueBiomesGoal",
@@ -4135,7 +5969,16 @@
    "name": "Visit 10 unique Biomes",
    "amount": 10,
    "icon": "minecraft:compass",
-   "id": "VISIT_10_UNIQUE_BIOMES"
+   "id": "VISIT_10_UNIQUE_BIOMES",
+   "tooltip": true,
+   "render": [
+    {
+     "item": "minecraft:compass"
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "Visit15UniqueBiomesGoal",
@@ -4144,7 +5987,16 @@
    "name": "Visit 15 unique Biomes",
    "amount": 15,
    "icon": "minecraft:compass",
-   "id": "VISIT_15_UNIQUE_BIOMES"
+   "id": "VISIT_15_UNIQUE_BIOMES",
+   "tooltip": true,
+   "render": [
+    {
+     "item": "minecraft:compass"
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "KillCreakingGoal",
@@ -4156,6 +6008,11 @@
     "minecraft:creaking"
    ],
    "id": "KILL_CREAKING",
+   "render": [
+    {
+     "texture": "custom/kill/kill_creaking"
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:pale_garden"
@@ -4204,6 +6061,13 @@
     "minecraft:sulfur_cube_bucket"
    ],
    "id": "OBTAIN_SULFUR_CUBE_BUCKET",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:sulfur_cube_bucket"
+     ]
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:sulfur_caves"
@@ -4245,7 +6109,21 @@
    "name": "Die in 5 different ways",
    "texture": "death/die_to_cactus",
    "amount": 5,
-   "id": "DIE_5_UNIQUE_WAYS"
+   "id": "DIE_5_UNIQUE_WAYS",
+   "tooltip": true,
+   "render": [
+    {
+     "cycle_textures": [
+      "custom/death/die_to_cactus",
+      "custom/death/die_to_drowning",
+      "custom/death/die_to_anvil",
+      "custom/death/die_to_freezing"
+     ]
+    },
+    {
+     "count": "{amount}"
+    }
+   ]
   },
   {
    "class": "KillZombieNautilusGoal",
@@ -4257,6 +6135,11 @@
     "minecraft:zombie_nautilus"
    ],
    "id": "KILL_ZOMBIE_NAUTILUS",
+   "render": [
+    {
+     "texture": "custom/kill/kill_zombie_nautilus"
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:ocean",
@@ -4295,7 +6178,49 @@
     "minecraft:blue_egg",
     "minecraft:brown_egg"
    ],
-   "id": "OBTAIN_ALL_EGGS"
+   "id": "OBTAIN_ALL_EGGS",
+   "render": [
+    {
+     "cycle_items": [
+      "minecraft:egg",
+      "minecraft:blue_egg",
+      "minecraft:brown_egg"
+     ]
+    }
+   ],
+   "requirements": {
+    "biome_groups": [
+     [
+      "minecraft:desert",
+      "minecraft:jungle",
+      "minecraft:bamboo_jungle",
+      "minecraft:sparse_jungle",
+      "minecraft:savanna",
+      "minecraft:savanna_plateau",
+      "minecraft:windswept_savanna",
+      "minecraft:badlands",
+      "minecraft:eroded_badlands",
+      "minecraft:wooded_badlands",
+      "minecraft:mangrove_swamp"
+     ],
+     [
+      "minecraft:snowy_plains",
+      "minecraft:ice_spikes",
+      "minecraft:snowy_slopes",
+      "minecraft:grove",
+      "minecraft:frozen_river",
+      "minecraft:snowy_taiga",
+      "minecraft:snowy_beach",
+      "minecraft:old_growth_pine_taiga",
+      "minecraft:old_growth_spruce_taiga",
+      "minecraft:taiga",
+      "minecraft:windswept_forest",
+      "minecraft:windswept_gravelly_hills",
+      "minecraft:windswept_hills",
+      "minecraft:dappled_forest"
+     ]
+    ]
+   }
   },
   {
    "class": "DeflectProjectileGoal",
@@ -4357,7 +6282,12 @@
    "damage_types": [
     "minecraft:in_wall"
    ],
-   "id": "DIE_BY_SUFFOCATION"
+   "id": "DIE_BY_SUFFOCATION",
+   "render": [
+    {
+     "texture": "custom/death/die_to_suffocation"
+    }
+   ]
   },
   {
    "class": "DieByStalagmiteGoal",
@@ -4369,6 +6299,11 @@
     "minecraft:stalagmite"
    ],
    "id": "DIE_BY_STALAGMITE",
+   "render": [
+    {
+     "texture": "custom/death/die_to_stalagmite"
+    }
+   ],
    "requirements": {
     "biomes": [
      "minecraft:dripstone_caves"
@@ -4384,7 +6319,12 @@
    "damage_types": [
     "minecraft:hot_floor"
    ],
-   "id": "DIE_BY_MAGMA_BLOCK"
+   "id": "DIE_BY_MAGMA_BLOCK",
+   "render": [
+    {
+     "texture": "custom/death/die_to_magma_block"
+    }
+   ]
   },
   {
    "class": "PickUpOpponentItemGoal",

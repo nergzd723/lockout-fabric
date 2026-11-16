@@ -75,6 +75,35 @@ pub const HOSTILE: &[&str] = &[
     "minecraft:zombified_piglin",
 ];
 
+/// One layer of a goal's square on the board, drawn in order. Items are ids or, starting
+/// with `{`, an item's SNBT (`item_from_snbt`); textures are keys of the mod's atlas.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Layer {
+    Item(String),
+    /// One after another, 60 client ticks each (`CycleItemTexturesProvider`).
+    CycleItems(Vec<String>),
+    Texture(String),
+    CycleTextures(Vec<String>),
+    /// A stack count in the square's corner (`Utility.drawStackCount`).
+    Count(String),
+    /// Leather pieces dyed a random colour, both changing every 60 ticks.
+    DyedCycle(Vec<String>),
+    /// An enchanted piece of each set in turn, a random one of the set every 60 ticks.
+    GlintCycle(Vec<Vec<String>>),
+}
+
+/// A texture the Java goals draw: the mod's own (`custom/...`), or a vanilla item texture,
+/// which is drawn as that item.
+fn texture_layer(path: &str) -> Layer {
+    match path {
+        "item/goat_horn" => Layer::Item("minecraft:goat_horn".into()),
+        "item/crossbow_firework" => Layer::Item(
+            "{id:\"minecraft:crossbow\",count:1,components:{\"minecraft:charged_projectiles\":[{id:\"minecraft:firework_rocket\",count:1}]}}".into(),
+        ),
+        _ => Layer::Texture(path.to_owned()),
+    }
+}
+
 /// What completes a goal on a Horizon server. `Unsupported` goals still draw on the board
 /// (a Fabric server may send them) but aren't put on boards this port generates.
 #[derive(Debug, Clone, PartialEq)]
@@ -316,7 +345,12 @@ pub enum OpponentEvent {
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Requirements {
+    /// One of these biomes near spawn, or every one with `all_biomes`.
     pub biomes: Vec<String>,
+    pub all_biomes: bool,
+    /// One biome of each group near spawn (`oneBiomeFromEach`), in place of `biomes`.
+    pub biome_groups: Vec<Vec<String>>,
+    /// One of these structures near spawn.
     pub structures: Vec<String>,
     pub random_pool: bool,
     pub teams_min: Option<usize>,
@@ -327,6 +361,90 @@ impl Requirements {
     pub fn teams_ok(&self, teams: usize) -> bool {
         self.teams_min.is_none_or(|m| teams >= m) && self.teams_exactly.is_none_or(|n| teams == n)
     }
+
+    /// `GoalRequirements.isSatisfied`: the biomes and structures it needs were located.
+    pub fn satisfied(&self, biome: impl Fn(&str) -> bool, structure: impl Fn(&str) -> bool) -> bool {
+        let biomes = if !self.biome_groups.is_empty() {
+            self.biome_groups.iter().all(|g| g.iter().any(|b| biome(b)))
+        } else if self.biomes.is_empty() {
+            true
+        } else if self.all_biomes {
+            self.biomes.iter().all(|b| biome(b))
+        } else {
+            self.biomes.iter().any(|b| biome(b))
+        };
+        biomes && (self.structures.is_empty() || self.structures.iter().any(|s| structure(s)))
+    }
+}
+
+/// The biomes the server locates before boards are made: every goal's, and the ones that
+/// decide which dyes can be made (`ServerStartedEventHandler`).
+pub fn biomes_to_locate(table: &Table) -> Vec<String> {
+    let mut out: Vec<String> = DYE_BIOMES.iter().map(|b| b.to_string()).collect();
+    for g in &table.goals {
+        let r = &g.requirements;
+        out.extend(r.biomes.iter().chain(r.biome_groups.iter().flatten()).cloned());
+    }
+    let mut seen = std::collections::HashSet::new();
+    out.retain(|b| seen.insert(b.clone()));
+    out
+}
+
+pub fn structures_to_locate(table: &Table) -> Vec<String> {
+    let mut seen = std::collections::HashSet::new();
+    table
+        .goals
+        .iter()
+        .flat_map(|g| g.requirements.structures.iter().cloned())
+        .filter(|s| seen.insert(s.clone()))
+        .collect()
+}
+
+const DYE_BIOMES: [&str; 7] = [
+    "minecraft:desert",
+    "minecraft:badlands",
+    "minecraft:eroded_badlands",
+    "minecraft:wooded_badlands",
+    "minecraft:warm_ocean",
+    "minecraft:jungle",
+    "minecraft:bamboo_jungle",
+];
+
+/// The dyes a world lets players make (`AVAILABLE_DYE_COLORS`): cactus (green, lime, cyan)
+/// needs a desert or badlands, else sea pickles in a warm ocean give lime; cocoa (brown)
+/// needs a jungle.
+pub fn available_dyes(biome: impl Fn(&str) -> bool) -> Vec<&'static str> {
+    let mut dyes = vec![
+        "black",
+        "white",
+        "gray",
+        "light_gray",
+        "blue",
+        "light_blue",
+        "orange",
+        "red",
+        "yellow",
+        "magenta",
+        "pink",
+        "purple",
+    ];
+    let cactus = [
+        "minecraft:desert",
+        "minecraft:badlands",
+        "minecraft:eroded_badlands",
+        "minecraft:wooded_badlands",
+    ]
+    .iter()
+    .any(|b| biome(b));
+    if cactus {
+        dyes.extend(["green", "lime", "cyan"]);
+    } else if biome("minecraft:warm_ocean") {
+        dyes.push("lime");
+    }
+    if biome("minecraft:jungle") || biome("minecraft:bamboo_jungle") {
+        dyes.push("brown");
+    }
+    dyes
 }
 
 #[derive(Debug, Clone)]
@@ -380,6 +498,82 @@ impl GoalDef {
     }
 
     /// The count drawn over the icon ("Kill 7 Unique Hostile Mobs" shows a 7).
+    /// Whether the board's tooltip for this goal shows progress (`HasTooltipInfo`): its name
+    /// is underlined, as the Java client underlines it.
+    pub fn has_tooltip(&self) -> bool {
+        self.raw.get("tooltip").and_then(Value::as_bool).unwrap_or(false)
+    }
+
+    /// How the board draws this goal with data `data`: its Java class's `renderTexture`, or
+    /// its `getTextureItemStack` (extracted into `render` and `icon_count`).
+    pub fn layers(&self, data: &str) -> Vec<Layer> {
+        let amount = self.amount.map(|a| a.to_string()).unwrap_or_default();
+        let fill = |s: &str| {
+            s.replace("{amount}", &amount)
+                .replace("{data}", dye_of(data).unwrap_or(data))
+        };
+        // Goals whose stack depends on the board's data draw the stack the data makes.
+        let data_item = self.data.is_some().then(|| self.icon_stack(data));
+        let mut out = Vec::new();
+        let render = self.raw.get("render").and_then(Value::as_array);
+        match render {
+            None => {
+                out.push(Layer::Item(data_item.clone().unwrap_or_else(|| self.icon_stack(data))));
+                if let Some(c) = self.raw.get("icon_count").and_then(Value::as_str).map(fill)
+                    && c != "1"
+                {
+                    out.push(Layer::Count(c));
+                }
+            }
+            Some(layers) => {
+                for l in layers {
+                    let strings = |v: &Value| -> Vec<String> {
+                        v.as_array()
+                            .map_or_else(Vec::new, |a| a.iter().filter_map(Value::as_str).map(&fill).collect())
+                    };
+                    if let Some(item) = l.get("item").and_then(Value::as_str) {
+                        out.push(Layer::Item(data_item.clone().unwrap_or_else(|| item.to_owned())));
+                    } else if let Some(items) = l.get("cycle_items") {
+                        match &data_item {
+                            Some(i) => out.push(Layer::Item(i.clone())),
+                            None => out.push(Layer::CycleItems(strings(items))),
+                        }
+                    } else if let Some(t) = l.get("texture").and_then(Value::as_str) {
+                        out.push(texture_layer(&fill(t)));
+                    } else if let Some(ts) = l.get("cycle_textures") {
+                        out.push(Layer::CycleTextures(strings(ts)));
+                    } else if let Some(c) = l.get("count").and_then(Value::as_str) {
+                        out.push(Layer::Count(fill(c)));
+                    } else if let Some(items) = l.get("dyed_cycle") {
+                        out.push(Layer::DyedCycle(strings(items)));
+                    } else if let Some(sets) = l.get("glint_cycle").and_then(Value::as_array) {
+                        out.push(Layer::GlintCycle(sets.iter().map(&strings).collect()));
+                    }
+                }
+            }
+        }
+        out
+    }
+
+    /// The stack `getTextureItemStack` gives: the icon item, with its potion or dye.
+    fn icon_stack(&self, data: &str) -> String {
+        let icon = self.icon_for(data);
+        let potions = self.list("potions");
+        if let Some(potion) = potions.first()
+            && (icon == "minecraft:potion" || icon.ends_with("_potion"))
+        {
+            return format!(
+                "{{id:\"{icon}\",count:1,components:{{\"minecraft:potion_contents\":{{potion:\"{potion}\"}}}}}}"
+            );
+        }
+        if self.id == "WEAR_COLORED_LEATHER_ARMOR_PIECE"
+            && let Some(rgb) = dye_of(data).and_then(dye_rgb)
+        {
+            return format!("{{id:\"{icon}\",count:1,components:{{\"minecraft:dyed_color\":{rgb}}}}}");
+        }
+        icon
+    }
+
     pub fn icon_count(&self) -> Option<u32> {
         let counted = [
             "UniqueTrackedGoal",
@@ -733,6 +927,20 @@ fn parse() -> Table {
         let req = g.get("requirements");
         let requirements = Requirements {
             biomes: req.map(|r| strings(r, "biomes")).unwrap_or_default(),
+            all_biomes: req
+                .and_then(|r| r.get("all_biomes"))
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+            biome_groups: req
+                .and_then(|r| r.get("biome_groups"))
+                .and_then(Value::as_array)
+                .map(|gs| {
+                    gs.iter()
+                        .filter_map(Value::as_array)
+                        .map(|g| g.iter().filter_map(Value::as_str).map(str::to_owned).collect())
+                        .collect()
+                })
+                .unwrap_or_default(),
             structures: req.map(|r| strings(r, "structures")).unwrap_or_default(),
             random_pool: req
                 .and_then(|r| r.get("random_pool"))
@@ -807,6 +1015,47 @@ pub fn table() -> &'static Table {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn layers_follow_the_java_rendering() {
+        let t = table();
+        assert_eq!(
+            t.get("KILL_COLORED_SHEEP").unwrap().layers("lime"),
+            vec![Layer::Texture("custom/sheep/kill_lime_sheep".into())]
+        );
+        assert_eq!(
+            t.get("OBTAIN_64_COLORED_WOOL").unwrap().layers("red"),
+            vec![Layer::Item("minecraft:red_wool".into()), Layer::Count("64".into())]
+        );
+        assert_eq!(
+            t.get("EAT_10_UNIQUE_FOOD").unwrap().layers(DATA_NONE),
+            vec![Layer::Texture("custom/eat_unique".into()), Layer::Count("10".into())]
+        );
+        let kill = t.get("KILL_7_UNIQUE_HOSTILE_MOBS").unwrap().layers(DATA_NONE);
+        assert_eq!(
+            kill,
+            vec![Layer::Item("minecraft:iron_sword".into()), Layer::Count("7".into())]
+        );
+        let potion = t.get("BREW_HEALING_POTION").unwrap().layers(DATA_NONE);
+        assert!(
+            matches!(&potion[0], Layer::Item(s) if s.contains("minecraft:healing")),
+            "{potion:?}"
+        );
+        // Every texture a goal draws is in the atlas.
+        let atlas: Value = serde_json::from_str(include_str!("../data/atlas.json")).unwrap();
+        for g in &t.goals {
+            for l in g.layers(g.sample_data()) {
+                let keys = match &l {
+                    Layer::Texture(k) => vec![k.clone()],
+                    Layer::CycleTextures(ks) => ks.clone(),
+                    _ => vec![],
+                };
+                for k in keys {
+                    assert!(atlas["sprites"].get(&k).is_some(), "{}: {k}", g.id);
+                }
+            }
+        }
+    }
 
     #[test]
     fn every_goal_has_a_name_and_an_icon() {

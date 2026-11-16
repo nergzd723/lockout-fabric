@@ -6,5 +6,7 @@ description = "Lockout Bingo for Horizon, wire-compatible with the Fabric mod"
 
 [dependencies]
 # The launcher points this at the Horizon source it builds the game from. Every other
-# dependency must be a crate and version in Horizon's Cargo.lock; this mod needs none.
+# dependency must be a crate and version in Horizon's Cargo.lock.
 horizon-client = { git = "https://github.com/horizon-rust/horizon" }
+# Decodes the texture atlas; the version Horizon's own Cargo.lock has.
+png = "0.18"

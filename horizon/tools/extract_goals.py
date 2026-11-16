@@ -62,9 +62,15 @@ def parse_requirement_body(body):
     m = re.search(r"\.structures\(List\.of\(([^)]*)\)\)", body)
     if m:
         req["structures"] = ["minecraft:" + s.strip().split(".")[-1].lower() for s in m.group(1).split(",") if s.strip()]
-    m = re.search(r"\.biomes\(List\.of\(([^)]*)\)\)", body)
+    m = re.search(r"\.(biomes|allBiomes)\(List\.of\(([^)]*)\)\)", body)
     if m:
-        req["biomes"] = ["minecraft:" + s.strip().split(".")[-1].lower() for s in m.group(1).split(",") if s.strip()]
+        req["biomes"] = ["minecraft:" + s.strip().split(".")[-1].lower() for s in m.group(2).split(",") if s.strip()]
+        if m.group(1) == "allBiomes":
+            req["all_biomes"] = True
+    m = re.search(r"\.oneBiomeFromEach\(List\.of\((.*)\)\)", body, re.S)
+    if m:
+        groups = re.findall(r"List\.of\(([^)]*)\)", m.group(1))
+        req["biome_groups"] = [["minecraft:" + s.strip().split(".")[-1].lower() for s in g.split(",") if s.strip()] for g in groups]
     if "partOfRandomPool(false)" in body:
         req["random_pool"] = False
     m = re.search(r"isTeamSizeOk\(\(size\) -> size ([>=]=) (\d+)\)", body)
@@ -223,6 +229,276 @@ def parse_class(path, files):
     return info
 
 
+# ---- how the board draws each goal -------------------------------------------------------
+#
+# Each goal gets `render`: layers drawn in order in its 16x16 square, as its Java class's
+# `renderTexture` (or `getTextureItemStack`) draws them:
+#   {"item": id}                         an item (`potion` also names its potion)
+#   {"cycle_items": [ids]}               one item after another, 60 client ticks each
+#   {"texture": path}                    a texture of the mod's (`custom/...`, `{data}` filled in)
+#   {"cycle_textures": [paths]}          one texture after another, 60 ticks each
+#   {"count": text}                      a stack count in the corner (`{amount}` filled in)
+#   {"dyed_cycle": [ids]}                leather pieces in random colours, changing every 60 ticks
+#   {"glint_cycle": [[ids], ...]}        enchanted armour, a random piece of each set in turn
+
+def body_of(text, method):
+    m = re.search(r"public \S+ " + method + r"\([^)]*\)\s*\{", text)
+    if not m:
+        return None
+    depth, i = 1, m.end()
+    while depth and i < len(text):
+        depth += {"{": 1, "}": -1}.get(text[i], 0)
+        i += 1
+    return text[m.end() : i - 1]
+
+
+def texture_path(expr):
+    """`Identifier.fromNamespaceAndPath(Constants.NAMESPACE, "textures/custom/x.png")` -> `custom/x`."""
+    m = re.search(r'"textures/((?:[^"\\]|\\.)*?)"\s*(?:\+\s*(\w+)\s*\+\s*"((?:[^"\\]|\\.)*?)")?', expr)
+    if not m:
+        return None
+    path = m.group(1) + ("{data}" + m.group(3) if m.group(2) else "")
+    return path[:-4] if path.endswith(".png") else path
+
+
+def constant(text, name):
+    m = re.search(r"\b" + re.escape(name) + r"\s*=\s*(.*?);", text, re.S)
+    return m.group(1) if m else None
+
+
+def stack_item(text, expr):
+    """The item a stack expression or constant stands for."""
+    expr = expr.strip()
+    if re.fullmatch(r"\w+", expr):
+        value = constant(text, expr)
+        if value is None:
+            return None
+        expr = value
+    m = re.search(r"Items\.([A-Z0-9_]+)", expr)
+    return "minecraft:" + m.group(1).lower() if m else None
+
+
+def stack_count(text, name):
+    """`STACK.setCount(getAmount())` or `setCount(16)` in the constructor."""
+    m = re.search(re.escape(name) + r"\.setCount\(([^;]*)\);", text)
+    if not m:
+        return None
+    arg = m.group(1).strip()
+    return "{amount}" if "getAmount" in arg else arg
+
+
+def list_constant(text, pattern_item):
+    out = []
+    for name, body in re.findall(r"(\w+)\s*=\s*List\.of\((.*?)\);", text, re.S):
+        yield name, body
+
+
+def items_of(expr):
+    return ["minecraft:" + i.lower() for i in re.findall(r"Items\.([A-Z0-9_]+)", expr)]
+
+
+def textures_of(expr):
+    return [texture_path(m) for m in re.findall(r'(fromNamespaceAndPath\([^)]*\))', expr) if texture_path(m)]
+
+
+def interfaces_of(text):
+    m = re.search(r"class \w+(?:<[^>]*>)?(?: extends \w+(?:<[^>]*>)?)?\s+implements ([^{]+)\{", text)
+    return [i.strip().split("<")[0] for i in m.group(1).split(",")] if m else []
+
+
+def class_text(name, files):
+    if name in files:
+        return files[name].read_text()
+    path = JAVA / "lockout/interfaces" / f"{name}.java"
+    return path.read_text() if path.exists() else None
+
+
+def parent_of(text):
+    m = re.search(r"class \w+(?:<[^>]*>)? extends (\w+)", text)
+    return m.group(1) if m else None
+
+
+def lookup(name, files, chain_texts):
+    """A constant or method body found in the class or its parents, most specific first."""
+    for t in chain_texts:
+        v = constant(t, name)
+        if v is not None:
+            return v
+    return None
+
+
+def base_layers(kind, chain, files):
+    """What an interface's default renderTexture draws."""
+    if kind == "TextureProvider":
+        for t in chain:
+            body = body_of(t, "getTextureIdentifier")
+            if body:
+                ret = re.search(r"return\s+(.*?);", body, re.S).group(1).strip()
+                path = texture_path(ret)
+                if path is None and re.fullmatch(r"\w+", ret):
+                    expr = lookup(ret, files, chain)
+                    path = texture_path(expr) if expr else None
+                    if path is None:
+                        # Built in the constructor from the goal's data.
+                        for t2 in chain:
+                            m = re.search(re.escape(ret) + r"\s*=\s*(Identifier\.[^;]*);", t2)
+                            if m:
+                                path = texture_path(m.group(1))
+                                break
+                if path:
+                    return [{"texture": path}]
+        return []
+    if kind == "CycleTexturesProvider":
+        for t in chain:
+            body = body_of(t, "getTexturesToDisplay")
+            if body:
+                ret = re.search(r"return\s+(.*?);", body, re.S).group(1).strip()
+                expr = lookup(ret, files, chain) if re.fullmatch(r"\w+", ret) else ret
+                return [{"cycle_textures": textures_of(expr or "")}]
+        return []
+    if kind == "CycleItemTexturesProvider":
+        for t in chain:
+            for method in ("getItemsToDisplay", "getItems"):
+                body = body_of(t, method)
+                if body and "return" in body:
+                    ret = re.search(r"return\s+(.*?);", body, re.S).group(1).strip()
+                    if ret == "getItems()":
+                        continue
+                    expr = lookup(ret, files, chain) if re.fullmatch(r"\w+", ret) else ret
+                    items = items_of(expr or "")
+                    if items:
+                        return [{"cycle_items": items}]
+        return []
+    return []
+
+
+def render_layers(cls, files, start=0):
+    chain, names, name = [], [], cls
+    while name:
+        t = class_text(name, files)
+        if t is None:
+            break
+        chain.append(t)
+        names.append(name)
+        name = parent_of(t)
+    interfaces = []
+    for t in chain:
+        interfaces += interfaces_of(t)
+    # The most specific renderTexture.
+    for i, t in enumerate(chain):
+        if i < start:
+            continue
+        body = body_of(t, "renderTexture")
+        if body is None:
+            continue
+        layers = []
+        text = "\n".join(chain)
+        for stmt in re.split(r";\s*\n", body):
+            stmt = stmt.strip()
+            if not stmt:
+                continue
+            if "return false" in stmt:
+                return None
+            sm = re.search(r"(?:(\w+)\.)?super\.renderTexture", stmt)
+            if sm:
+                if sm.group(1):
+                    layers += base_layers(sm.group(1), chain, files)
+                else:
+                    layers += render_layers(cls, files, i + 1) or []
+                continue
+            if "DYED_COLOR" in stmt:
+                for t2 in chain:
+                    b = body_of(t2, "getItems") or ""
+                    ret = re.search(r"return\s+(\w+)", b)
+                    expr = lookup(ret.group(1), files, chain) if ret else None
+                    if expr:
+                        return [{"dyed_cycle": items_of(expr)}]
+            if "ENCHANTMENT_GLINT_OVERRIDE" in stmt:
+                expr = lookup("ITEMS", files, chain) or ""
+                inner = re.search(r"List\.of\((.*)\)", expr, re.S)
+                names = [n.strip() for n in inner.group(1).split(",")] if inner else []
+                sets = [items_of(lookup(n, files, chain) or "") for n in names]
+                return [{"glint_cycle": [x for x in sets if x]}]
+            im = re.search(r"context\.item\((.*?),\s*x,\s*y\)", stmt)
+            if im:
+                arg = im.group(1)
+                cm = re.search(r"(\w+)\.get\(mod / 60\)", arg)
+                if cm:
+                    layers.append({"cycle_items": items_of(lookup(cm.group(1), files, chain) or "")})
+                elif "getItemsToDisplay" in arg:
+                    layers += base_layers("CycleItemTexturesProvider", chain, files)
+                else:
+                    item = stack_item(text, arg)
+                    if item:
+                        layers.append({"item": item})
+                continue
+            bm = re.search(r"context\.blit\([^,]*,\s*(\w+)", stmt)
+            if bm:
+                expr = lookup(bm.group(1), files, chain)
+                path = texture_path(expr) if expr else None
+                if path:
+                    layers.append({"texture": path})
+                continue
+            dm = re.search(r"drawStackCount\([^,]*,[^,]*,[^,]*,\s*String\.valueOf\((.*?)\)\)", stmt)
+            if dm:
+                arg = dm.group(1).strip()
+                layers.append({"count": "{amount}" if "getAmount" in arg else (lookup(arg, files, chain) or arg)})
+                continue
+            dd = re.search(r"itemDecorations\([^,]*,\s*(\w+),\s*x,\s*y(?:,\s*(.*?))?\)\s*$", stmt)
+            if dd:
+                if dd.group(2):
+                    arg = dd.group(2).strip()
+                    if arg.startswith('"'):
+                        layers.append({"count": arg.strip('"')})
+                    elif "getAmount" in arg:
+                        layers.append({"count": "{amount}"})
+                else:
+                    count = stack_count(text, dd.group(1))
+                    if count:
+                        layers.append({"count": count})
+                continue
+        return layers
+    for kind in ("TextureProvider", "CycleTexturesProvider", "CycleItemTexturesProvider"):
+        if kind in interfaces:
+            layers = base_layers(kind, chain, files)
+            if layers:
+                return layers
+    return None
+
+
+def has_tooltip(cls, files):
+    """Whether the goal implements `HasTooltipInfo` (its board tooltip shows progress)."""
+    name = cls
+    while name:
+        t = class_text(name, files)
+        if t is None:
+            return False
+        if "HasTooltipInfo" in "".join(interfaces_of(t)):
+            return True
+        name = parent_of(t)
+    return False
+
+
+def icon_count(cls, files):
+    """The count `getTextureItemStack`'s stack shows (`STACK.setCount(getAmount())`)."""
+    chain, name = [], cls
+    while name:
+        t = class_text(name, files)
+        if t is None:
+            break
+        chain.append(t)
+        name = parent_of(t)
+    for t in chain:
+        body = body_of(t, "getTextureItemStack")
+        if body:
+            ret = re.search(r"return\s+(\w+)\s*;", body)
+            if not ret:
+                return None
+            text = "\n".join(chain)
+            return stack_count(text, ret.group(1))
+    return None
+
+
 def groups():
     src = (JAVA / "generator/GoalGroup.java").read_text()
     out = []
@@ -249,6 +525,21 @@ def main():
             raise SystemExit(f"no source for {cls}")
         info = parse_class(files[cls], files)
         info["id"] = types[const]
+        if has_tooltip(cls, files):
+            info["tooltip"] = True
+        layers = render_layers(cls, files)
+        if layers:
+            for layer in layers:
+                # `getItems()` built from a stack (`List.of(ITEM_STACK.getItem())`): the goal's items.
+                if layer.get("cycle_items") == []:
+                    layer["cycle_items"] = info.get("items", [])
+            if [list(l)[0] for l in layers] == ["count"]:
+                layers.insert(0, {"cycle_items": info.get("items", [])})
+            info["render"] = layers
+        else:
+            count = icon_count(cls, files)
+            if count:
+                info["icon_count"] = count
         if req:
             info["requirements"] = req
         if data:

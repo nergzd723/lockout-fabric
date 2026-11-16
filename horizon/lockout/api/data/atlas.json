@@ -1,0 +1,944 @@
+{
+ "size": [
+  1024,
+  709
+ ],
+ "sprites": {
+  "custom/advancements/10_advancements": [
+   0,
+   0,
+   64,
+   64
+  ],
+  "custom/advancements/20_advancements": [
+   64,
+   0,
+   64,
+   64
+  ],
+  "custom/advancements/30_advancements": [
+   128,
+   0,
+   64,
+   64
+  ],
+  "custom/apply_banner_shield": [
+   192,
+   0,
+   64,
+   64
+  ],
+  "custom/arthropod/kill_bee": [
+   256,
+   0,
+   64,
+   64
+  ],
+  "custom/arthropod/kill_cave_spider": [
+   320,
+   0,
+   64,
+   64
+  ],
+  "custom/arthropod/kill_endermite": [
+   384,
+   0,
+   64,
+   64
+  ],
+  "custom/arthropod/kill_silverfish": [
+   448,
+   0,
+   64,
+   64
+  ],
+  "custom/arthropod/kill_spider": [
+   512,
+   0,
+   64,
+   64
+  ],
+  "custom/breed/breed_armadillo": [
+   576,
+   0,
+   64,
+   64
+  ],
+  "custom/breed/breed_camel": [
+   640,
+   0,
+   64,
+   64
+  ],
+  "custom/breed/breed_chicken": [
+   704,
+   0,
+   64,
+   64
+  ],
+  "custom/breed/breed_cow": [
+   768,
+   0,
+   64,
+   64
+  ],
+  "custom/breed/breed_fox": [
+   832,
+   0,
+   64,
+   64
+  ],
+  "custom/breed/breed_frogs": [
+   896,
+   0,
+   64,
+   64
+  ],
+  "custom/breed/breed_goat": [
+   960,
+   0,
+   64,
+   64
+  ],
+  "custom/breed/breed_hoglin": [
+   0,
+   64,
+   64,
+   64
+  ],
+  "custom/breed/breed_horse": [
+   64,
+   64,
+   64,
+   64
+  ],
+  "custom/breed/breed_pig": [
+   128,
+   64,
+   64,
+   64
+  ],
+  "custom/breed/breed_rabbit": [
+   192,
+   64,
+   64,
+   64
+  ],
+  "custom/breed/breed_sheep": [
+   256,
+   64,
+   64,
+   64
+  ],
+  "custom/breed/breed_strider": [
+   320,
+   64,
+   64,
+   64
+  ],
+  "custom/breed/breed_x": [
+   384,
+   64,
+   64,
+   64
+  ],
+  "custom/brush_overlay": [
+   448,
+   64,
+   64,
+   64
+  ],
+  "custom/campfire": [
+   512,
+   64,
+   64,
+   64
+  ],
+  "custom/deal_400_damage": [
+   576,
+   64,
+   64,
+   64
+  ],
+  "custom/death/die_to_anchor": [
+   640,
+   64,
+   64,
+   64
+  ],
+  "custom/death/die_to_anvil": [
+   704,
+   64,
+   64,
+   64
+  ],
+  "custom/death/die_to_bed": [
+   768,
+   64,
+   64,
+   64
+  ],
+  "custom/death/die_to_bee": [
+   832,
+   64,
+   64,
+   64
+  ],
+  "custom/death/die_to_cactus": [
+   896,
+   64,
+   64,
+   64
+  ],
+  "custom/death/die_to_drowning": [
+   960,
+   64,
+   64,
+   64
+  ],
+  "custom/death/die_to_falling_stalactite": [
+   0,
+   128,
+   64,
+   64
+  ],
+  "custom/death/die_to_firework": [
+   64,
+   128,
+   64,
+   64
+  ],
+  "custom/death/die_to_freezing": [
+   128,
+   128,
+   64,
+   64
+  ],
+  "custom/death/die_to_golem": [
+   192,
+   128,
+   64,
+   64
+  ],
+  "custom/death/die_to_magic": [
+   256,
+   128,
+   64,
+   64
+  ],
+  "custom/death/die_to_magma_block": [
+   320,
+   128,
+   64,
+   64
+  ],
+  "custom/death/die_to_polar_bear": [
+   384,
+   128,
+   64,
+   64
+  ],
+  "custom/death/die_to_pufferfish": [
+   448,
+   128,
+   64,
+   64
+  ],
+  "custom/death/die_to_stalagmite": [
+   512,
+   128,
+   64,
+   64
+  ],
+  "custom/death/die_to_suffocation": [
+   576,
+   128,
+   64,
+   64
+  ],
+  "custom/death/die_to_sweet_berries": [
+   640,
+   128,
+   64,
+   64
+  ],
+  "custom/death/die_to_tnt_minecart": [
+   704,
+   128,
+   64,
+   64
+  ],
+  "custom/death/die_to_trident": [
+   768,
+   128,
+   64,
+   64
+  ],
+  "custom/death/die_to_twisting_vines": [
+   832,
+   128,
+   64,
+   64
+  ],
+  "custom/death/die_to_vines": [
+   896,
+   128,
+   64,
+   64
+  ],
+  "custom/death/die_to_void": [
+   960,
+   128,
+   64,
+   64
+  ],
+  "custom/death/die_to_warden": [
+   0,
+   192,
+   64,
+   64
+  ],
+  "custom/death/die_to_weeping_vines": [
+   64,
+   192,
+   64,
+   64
+  ],
+  "custom/die_to_tnt_minecart": [
+   128,
+   192,
+   64,
+   64
+  ],
+  "custom/disable_shield": [
+   192,
+   192,
+   64,
+   64
+  ],
+  "custom/down_arrow": [
+   256,
+   192,
+   64,
+   64
+  ],
+  "custom/duplicate_allay": [
+   320,
+   192,
+   64,
+   64
+  ],
+  "custom/eat_cake": [
+   384,
+   192,
+   64,
+   64
+  ],
+  "custom/eat_unique": [
+   448,
+   192,
+   64,
+   64
+  ],
+  "custom/end_crystal": [
+   512,
+   192,
+   64,
+   64
+  ],
+  "custom/enrage_enderman": [
+   576,
+   192,
+   64,
+   64
+  ],
+  "custom/enrage_zombie_piglin": [
+   640,
+   192,
+   64,
+   64
+  ],
+  "custom/experience/level_10": [
+   704,
+   192,
+   64,
+   64
+  ],
+  "custom/experience/level_15": [
+   768,
+   192,
+   64,
+   64
+  ],
+  "custom/experience/level_20": [
+   832,
+   192,
+   64,
+   64
+  ],
+  "custom/experience/level_30": [
+   896,
+   192,
+   64,
+   64
+  ],
+  "custom/fill_chiseled_bookshelf": [
+   960,
+   192,
+   64,
+   64
+  ],
+  "custom/filled_composter": [
+   0,
+   256,
+   64,
+   64
+  ],
+  "custom/flower_in_a_pot": [
+   64,
+   256,
+   64,
+   64
+  ],
+  "custom/glow_crimson_sign": [
+   128,
+   256,
+   64,
+   64
+  ],
+  "custom/glow_warped_sign": [
+   192,
+   256,
+   64,
+   64
+  ],
+  "custom/height_limit": [
+   256,
+   256,
+   64,
+   64
+  ],
+  "custom/item_frame_in_item_frame": [
+   320,
+   256,
+   64,
+   64
+  ],
+  "custom/kill/breeze_wind_charge": [
+   384,
+   256,
+   64,
+   64
+  ],
+  "custom/kill/kill_100_mobs": [
+   448,
+   256,
+   64,
+   64
+  ],
+  "custom/kill/kill_bat": [
+   512,
+   256,
+   64,
+   64
+  ],
+  "custom/kill/kill_bogged": [
+   576,
+   256,
+   64,
+   64
+  ],
+  "custom/kill/kill_creaking": [
+   640,
+   256,
+   64,
+   64
+  ],
+  "custom/kill/kill_elder_guardian": [
+   704,
+   256,
+   64,
+   64
+  ],
+  "custom/kill/kill_ghast": [
+   768,
+   256,
+   64,
+   64
+  ],
+  "custom/kill/kill_guardian": [
+   832,
+   256,
+   64,
+   64
+  ],
+  "custom/kill/kill_parched": [
+   896,
+   256,
+   64,
+   64
+  ],
+  "custom/kill/kill_silverfish": [
+   960,
+   256,
+   64,
+   64
+  ],
+  "custom/kill/kill_snow_golem": [
+   0,
+   320,
+   64,
+   64
+  ],
+  "custom/kill/kill_snowman_nether": [
+   64,
+   320,
+   64,
+   64
+  ],
+  "custom/kill/kill_spider_cycle": [
+   128,
+   320,
+   64,
+   64
+  ],
+  "custom/kill/kill_stray": [
+   192,
+   320,
+   64,
+   64
+  ],
+  "custom/kill/kill_warden": [
+   256,
+   320,
+   64,
+   64
+  ],
+  "custom/kill/kill_witch": [
+   320,
+   320,
+   64,
+   64
+  ],
+  "custom/kill/kill_zoglin": [
+   384,
+   320,
+   64,
+   64
+  ],
+  "custom/kill/kill_zombie_nautilus": [
+   448,
+   320,
+   64,
+   64
+  ],
+  "custom/kill/kill_zombie_villager": [
+   512,
+   320,
+   64,
+   64
+  ],
+  "custom/kill_100_mobs": [
+   576,
+   320,
+   64,
+   64
+  ],
+  "custom/kill_player": [
+   640,
+   320,
+   64,
+   64
+  ],
+  "custom/kill_snowman_nether": [
+   704,
+   320,
+   64,
+   64
+  ],
+  "custom/leash/leash_iron_golem": [
+   768,
+   320,
+   64,
+   64
+  ],
+  "custom/light_candle": [
+   832,
+   320,
+   64,
+   64
+  ],
+  "custom/more_level": [
+   896,
+   320,
+   64,
+   64
+  ],
+  "custom/name/name_ghast": [
+   960,
+   320,
+   64,
+   64
+  ],
+  "custom/name/name_iron_golem": [
+   0,
+   384,
+   64,
+   64
+  ],
+  "custom/name/name_sheep": [
+   64,
+   384,
+   64,
+   64
+  ],
+  "custom/nether_portal": [
+   128,
+   384,
+   64,
+   64
+  ],
+  "custom/opponent/no_crafting_table": [
+   192,
+   384,
+   64,
+   64
+  ],
+  "custom/opponent/no_death": [
+   256,
+   384,
+   64,
+   64
+  ],
+  "custom/opponent/no_fall_damage": [
+   320,
+   384,
+   64,
+   64
+  ],
+  "custom/opponent/no_fire": [
+   384,
+   384,
+   64,
+   64
+  ],
+  "custom/opponent/no_food": [
+   448,
+   384,
+   64,
+   64
+  ],
+  "custom/opponent/no_jump": [
+   512,
+   384,
+   64,
+   64
+  ],
+  "custom/opponent/no_obsidian": [
+   576,
+   384,
+   64,
+   64
+  ],
+  "custom/opponent/no_seeds": [
+   640,
+   384,
+   64,
+   64
+  ],
+  "custom/opponent/no_water": [
+   704,
+   384,
+   64,
+   64
+  ],
+  "custom/opponent/opponent_hits_you": [
+   768,
+   384,
+   64,
+   64
+  ],
+  "custom/opponent/opponent_takes_100_damage": [
+   832,
+   384,
+   64,
+   64
+  ],
+  "custom/pearl_nether_portal": [
+   896,
+   384,
+   64,
+   64
+  ],
+  "custom/sheep/kill_blue_sheep": [
+   960,
+   384,
+   64,
+   64
+  ],
+  "custom/sheep/kill_cyan_sheep": [
+   0,
+   448,
+   64,
+   64
+  ],
+  "custom/sheep/kill_green_sheep": [
+   64,
+   448,
+   64,
+   64
+  ],
+  "custom/sheep/kill_light_blue_sheep": [
+   128,
+   448,
+   64,
+   64
+  ],
+  "custom/sheep/kill_lime_sheep": [
+   192,
+   448,
+   64,
+   64
+  ],
+  "custom/sheep/kill_magenta_sheep": [
+   256,
+   448,
+   64,
+   64
+  ],
+  "custom/sheep/kill_orange_sheep": [
+   320,
+   448,
+   64,
+   64
+  ],
+  "custom/sheep/kill_pink_sheep": [
+   384,
+   448,
+   64,
+   64
+  ],
+  "custom/sheep/kill_purple_sheep": [
+   448,
+   448,
+   64,
+   64
+  ],
+  "custom/sheep/kill_red_sheep": [
+   512,
+   448,
+   64,
+   64
+  ],
+  "custom/sheep/kill_yellow_sheep": [
+   576,
+   448,
+   64,
+   64
+  ],
+  "custom/sprint_1km": [
+   640,
+   448,
+   64,
+   64
+  ],
+  "custom/spy/spy_enderman": [
+   704,
+   448,
+   64,
+   64
+  ],
+  "custom/spy/spy_iron_golem": [
+   768,
+   448,
+   64,
+   64
+  ],
+  "custom/spy/spy_piglin_brute": [
+   832,
+   448,
+   64,
+   64
+  ],
+  "custom/starve": [
+   896,
+   448,
+   64,
+   64
+  ],
+  "custom/status_effect/3_status_effects": [
+   960,
+   448,
+   64,
+   64
+  ],
+  "custom/status_effect/4_status_effects": [
+   0,
+   512,
+   64,
+   64
+  ],
+  "custom/status_effect/6_status_effects": [
+   64,
+   512,
+   64,
+   64
+  ],
+  "custom/status_effect/absorption": [
+   128,
+   512,
+   64,
+   64
+  ],
+  "custom/status_effect/bad_omen": [
+   192,
+   512,
+   64,
+   64
+  ],
+  "custom/status_effect/glowing": [
+   256,
+   512,
+   64,
+   64
+  ],
+  "custom/status_effect/jump_boost": [
+   320,
+   512,
+   64,
+   64
+  ],
+  "custom/status_effect/levitation": [
+   384,
+   512,
+   64,
+   64
+  ],
+  "custom/status_effect/mining_fatigue": [
+   448,
+   512,
+   64,
+   64
+  ],
+  "custom/status_effect/nausea": [
+   512,
+   512,
+   64,
+   64
+  ],
+  "custom/status_effect/poison": [
+   576,
+   512,
+   64,
+   64
+  ],
+  "custom/status_effect/weakness": [
+   640,
+   512,
+   64,
+   64
+  ],
+  "custom/take_200_damage": [
+   704,
+   512,
+   64,
+   64
+  ],
+  "custom/tame/tame_cat": [
+   768,
+   512,
+   64,
+   64
+  ],
+  "custom/tame/tame_horse": [
+   832,
+   512,
+   64,
+   64
+  ],
+  "custom/tame/tame_nautilus": [
+   896,
+   512,
+   64,
+   64
+  ],
+  "custom/tame/tame_parrot": [
+   960,
+   512,
+   64,
+   64
+  ],
+  "custom/tame/tame_wolf": [
+   0,
+   576,
+   64,
+   64
+  ],
+  "custom/undead/kill_drowned": [
+   64,
+   576,
+   64,
+   64
+  ],
+  "custom/undead/kill_husk": [
+   128,
+   576,
+   64,
+   64
+  ],
+  "custom/undead/kill_stray": [
+   192,
+   576,
+   64,
+   64
+  ],
+  "custom/undead/kill_wither_skeleton": [
+   256,
+   576,
+   64,
+   64
+  ],
+  "custom/undead/kill_zoglin": [
+   320,
+   576,
+   64,
+   64
+  ],
+  "custom/undead/kill_zombie": [
+   384,
+   576,
+   64,
+   64
+  ],
+  "custom/undead/kill_zombie_villager": [
+   448,
+   576,
+   64,
+   64
+  ],
+  "custom/up_arrow": [
+   512,
+   576,
+   64,
+   64
+  ],
+  "custom/use_cauldron": [
+   576,
+   576,
+   64,
+   64
+  ],
+  "gui/sprites/gui": [
+   0,
+   640,
+   58,
+   69
+  ],
+  "gui/sprites/gui_center": [
+   58,
+   640,
+   32,
+   32
+  ]
+ }
+}

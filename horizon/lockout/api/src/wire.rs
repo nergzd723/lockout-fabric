@@ -19,6 +19,7 @@ pub const UPDATE_TIMER: &str = "lockout:update_timer";
 pub const VERSION: &str = "lockout:lockout_version";
 pub const DRAFT_STATE: &str = "lockout:draft_state";
 pub const CUSTOM_BOARD: &str = "lockout:set_custom_board";
+pub const DRAFT_ACTION: &str = "lockout:draft_action";
 
 /// Every clientbound channel, for `minecraft:register`.
 pub const CLIENTBOUND: &[&str] = &[
@@ -29,9 +30,28 @@ pub const CLIENTBOUND: &[&str] = &[
     END,
     UPDATE_TIMER,
     VERSION,
+    DRAFT_STATE,
 ];
 /// Every serverbound channel this port speaks.
-pub const SERVERBOUND: &[&str] = &[VERSION, CUSTOM_BOARD];
+pub const SERVERBOUND: &[&str] = &[VERSION, CUSTOM_BOARD, DRAFT_ACTION];
+
+/// `DraftActionPayload.REROLL`: the action that asks for a new offer.
+pub const REROLL: i32 = -1;
+
+/// `DraftStatePayload.Status`, by ordinal.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DraftStatus {
+    Running,
+    Finished,
+    Cancelled,
+}
+
+/// A team in the draft payload, with the rerolls it has left.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DraftTeam {
+    pub team: WireTeam,
+    pub rerolls: i32,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WireError(pub &'static str);
@@ -173,6 +193,22 @@ pub enum Payload {
     CustomBoard {
         goals: Option<Vec<(String, String)>>,
     },
+    /// The whole draft (`DraftStatePayload`): sent whenever it changes and once a second.
+    /// `picks` are (goal, data, team) in board order, `offer` what the picking team may take.
+    DraftState {
+        status: DraftStatus,
+        teams: Vec<DraftTeam>,
+        board_size: i32,
+        picks: Vec<(String, String, i32)>,
+        offer: Vec<(String, String)>,
+        current_team: i32,
+        ticks_left: i32,
+        pick_ticks: i32,
+    },
+    /// A drafting player's pick (an offer index) or [`REROLL`] (`DraftActionPayload`).
+    DraftAction {
+        action: i32,
+    },
 }
 
 impl Payload {
@@ -186,6 +222,8 @@ impl Payload {
             Payload::UpdateTimer { .. } => UPDATE_TIMER,
             Payload::Version { .. } => VERSION,
             Payload::CustomBoard { .. } => CUSTOM_BOARD,
+            Payload::DraftState { .. } => DRAFT_STATE,
+            Payload::DraftAction { .. } => DRAFT_ACTION,
         }
     }
 
@@ -237,12 +275,48 @@ impl Payload {
                     }
                 }
             },
+            Payload::DraftState {
+                status,
+                teams,
+                board_size,
+                picks,
+                offer,
+                current_team,
+                ticks_left,
+                pick_ticks,
+            } => {
+                w.varint(*status as i32);
+                w.varint(teams.len() as i32);
+                for t in teams {
+                    w.utf(&t.team.color);
+                    w.varint(t.team.players.len() as i32);
+                    for p in &t.team.players {
+                        w.utf(p);
+                    }
+                    w.varint(t.rerolls);
+                }
+                w.varint(*board_size);
+                w.varint(picks.len() as i32);
+                for (id, data, team) in picks {
+                    w.utf(id);
+                    w.utf(data);
+                    w.varint(*team);
+                }
+                w.varint(offer.len() as i32);
+                for (id, data) in offer {
+                    w.utf(id);
+                    w.utf(data);
+                }
+                w.varint(*current_team);
+                w.varint(*ticks_left);
+                w.varint(*pick_ticks);
+            }
+            Payload::DraftAction { action } => w.varint(*action),
         }
         w.data
     }
 
-    /// The payload on `channel`, or None for a channel that isn't Lockout's (or one this
-    /// port doesn't read, like the draft screen's).
+    /// The payload on `channel`, or None for a channel that isn't Lockout's.
     pub fn decode(channel: &str, data: &[u8]) -> Option<Result<Payload, WireError>> {
         let mut r = Reader::new(data);
         let r = &mut r;
@@ -318,6 +392,54 @@ impl Payload {
                 }
                 Ok(Payload::CustomBoard { goals: Some(goals) })
             })(),
+            DRAFT_STATE => (|| {
+                let status = match r.varint()? {
+                    0 => DraftStatus::Running,
+                    1 => DraftStatus::Finished,
+                    2 => DraftStatus::Cancelled,
+                    _ => return Err(WireError("bad draft status")),
+                };
+                let n = r.varint()?;
+                let n = r.count(n)?;
+                let mut teams = Vec::with_capacity(n);
+                for _ in 0..n {
+                    let color = r.utf()?;
+                    let size = r.varint()?;
+                    let size = r.count(size)?;
+                    let mut players = Vec::with_capacity(size);
+                    for _ in 0..size {
+                        players.push(r.utf()?);
+                    }
+                    teams.push(DraftTeam {
+                        team: WireTeam { color, players },
+                        rerolls: r.varint()?,
+                    });
+                }
+                let board_size = r.varint()?;
+                let n = r.varint()?;
+                let n = r.count(n)?;
+                let mut picks = Vec::with_capacity(n);
+                for _ in 0..n {
+                    picks.push((r.utf()?, r.utf()?, r.varint()?));
+                }
+                let n = r.varint()?;
+                let n = r.count(n)?;
+                let mut offer = Vec::with_capacity(n);
+                for _ in 0..n {
+                    offer.push((r.utf()?, r.utf()?));
+                }
+                Ok(Payload::DraftState {
+                    status,
+                    teams,
+                    board_size,
+                    picks,
+                    offer,
+                    current_team: r.varint()?,
+                    ticks_left: r.varint()?,
+                    pick_ticks: r.varint()?,
+                })
+            })(),
+            DRAFT_ACTION => (|| Ok(Payload::DraftAction { action: r.varint()? }))(),
             _ => return None,
         };
         Some(decoded)
@@ -435,6 +557,26 @@ mod tests {
                 version: LOCKOUT_VERSION.into(),
             },
             Payload::CustomBoard { goals: None },
+            Payload::DraftAction { action: REROLL },
+            Payload::DraftState {
+                status: DraftStatus::Running,
+                teams: vec![DraftTeam {
+                    team: WireTeam {
+                        color: "aqua".into(),
+                        players: vec!["Alex".into()],
+                    },
+                    rerolls: 1,
+                }],
+                board_size: 5,
+                picks: vec![("ENTER_END".into(), "null".into(), 0)],
+                offer: vec![
+                    ("KILL_WITCH".into(), "null".into()),
+                    ("KILL_COLORED_SHEEP".into(), "red".into()),
+                ],
+                current_team: 0,
+                ticks_left: 140,
+                pick_ticks: 200,
+            },
             Payload::CustomBoard {
                 goals: Some(vec![("ENTER_END".into(), "null".into()); 9]),
             },

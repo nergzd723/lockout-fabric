@@ -1,7 +1,7 @@
 //! The Windows executable's stack: Windows gives the main thread 1 MiB, and the game overflows it
 //! right after the loading screen. Horizon's `horizon-client` reserves 8 MiB in its build script
 //! (`packaging/windows/exe.rs`), which this package doesn't run; this reserves 64 MiB, what the
-//! Windows builds were tested with (horizon/dev/WINDOWS.md). Nothing for other targets.
+//! Windows builds were tested with (horizon/dev/DIST.md). Nothing for other targets.
 const STACK: u32 = 64 * 1024 * 1024;
 
 fn main() {

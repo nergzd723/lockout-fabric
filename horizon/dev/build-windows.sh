@@ -9,8 +9,9 @@
 # dist/ (horizon-client.exe, start.bat, README.txt, and resources linked in) and
 # lockout-horizon-windows-x64.tar.gz holding the same, the resources as a real folder.
 # --no-resources leaves them out: an archive with no Minecraft files, which each PC then prepares
-# itself. Fails, with what to do, when the checkout isn't on the mod's Horizon commit, the runner is
-# out of date, the resources aren't complete, the exe doesn't reserve its stack, or it needs a DLL
+# itself. Adds the runner (horizon/dev/lockout-run) to the workspace if it isn't there, and refreshes
+# it from the mod. Fails, with what to do, when the checkout isn't on the mod's Horizon commit, the
+# resources aren't complete, the exe doesn't reserve its stack, or it needs a DLL
 # that isn't part of Windows.
 set -euo pipefail
 
@@ -33,17 +34,34 @@ for arg in "$@"; do
 done
 
 [ -f Cargo.toml ] && [ -d crates/horizon-client ] || fail "run this from the Horizon checkout's root (cd ~/horizon)"
-grep -q '"lockout-run"' Cargo.toml || fail "lockout-run isn't in the workspace: do the setup in horizon/dev/WINDOWS.md"
 
 pin=$(sed -n 's/^horizon_revision = "\(.*\)"/\1/p' "$LOCKOUT/horizon/lockout/horizon-mixin.toml")
 head=$(git rev-parse HEAD)
 [ "$head" = "$pin" ] || fail "the checkout is on ${head:0:7}, the mod pins ${pin:0:7}: see \"A new Lockout version\" in horizon/dev/WINDOWS.md"
 
-# The runner as the mod has it; its Cargo.toml may point [lib] path elsewhere.
-for f in Cargo.toml main.rs build.rs; do
-    cmp -s <(grep -v '^path = .*lib\.rs"' "$LOCKOUT/horizon/dev/lockout-run/$f") <(grep -sv '^path = .*lib\.rs"' "lockout-run/$f") \
-        || fail "lockout-run/$f differs from the mod's: cp -r $LOCKOUT/horizon/dev/lockout-run $HORIZON/"
-done
+# The runner (horizon/dev/lockout-run): wherever the workspace has it, else added as lockout-run/,
+# and written fresh from the mod each time, its paths pointing at this checkout and this clone.
+member=$(python3 -c '
+import sys, tomllib
+members = tomllib.load(open("Cargo.toml", "rb")).get("workspace", {}).get("members", [])
+print(next((m for m in members if m.rstrip("/").split("/")[-1] == "lockout-run"), ""))')
+if [ -z "$member" ]; then
+    member=lockout-run
+    sed -i 's/^members = \[/members = [\n    "lockout-run",/' Cargo.toml
+    grep -q '"lockout-run"' Cargo.toml || fail "couldn't add lockout-run to the workspace members in Cargo.toml: add it by hand"
+    echo "Added lockout-run to the workspace (undo with: git checkout -- Cargo.toml && rm -rf lockout-run)."
+fi
+runner=$HORIZON/$member
+mkdir -p "$runner"
+cp "$LOCKOUT/horizon/dev/lockout-run/main.rs" "$LOCKOUT/horizon/dev/lockout-run/build.rs" "$runner/"
+python3 - "$LOCKOUT/horizon/dev/lockout-run/Cargo.toml" "$runner" "$HORIZON/crates" "$LOCKOUT/horizon/lockout/api/src/lib.rs" <<'EOF'
+import os, re, sys
+source, runner, crates, lib = sys.argv[1:]
+text = open(source).read()
+text = re.sub(r'^path = ".*lib\.rs"$', f'path = "{os.path.relpath(lib, runner)}"', text, flags=re.M)
+text = text.replace('"../crates/', f'"{os.path.relpath(crates, runner)}/')
+open(os.path.join(runner, "Cargo.toml"), "w").write(text)
+EOF
 
 command -v x86_64-w64-mingw32-gcc > /dev/null || fail "no MinGW linker: sudo apt install mingw-w64 (Arch: sudo pacman -S mingw-w64-gcc)"
 rustup target list --installed | grep -qx "$TARGET" || fail "no Windows target: rustup target add $TARGET"

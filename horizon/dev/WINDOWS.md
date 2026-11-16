@@ -17,15 +17,8 @@ Put the Horizon checkout on the commit the mod pins (launcher 0.2.69's, `launche
 cd ~/horizon && git fetch origin --tags && git checkout "$(sed -n 's/^horizon_revision = "\(.*\)"/\1/p' ~/lockout-fabric/horizon/lockout/horizon-mixin.toml)"
 ```
 
-Add the runner to the workspace:
-
-```bash
-cp -r ~/lockout-fabric/horizon/dev/lockout-run ~/horizon/
-```
-
-```bash
-sed -i 's/^members = \[/members = [\n    "lockout-run",/' ~/horizon/Cargo.toml
-```
+The build script adds the runner (`horizon/dev/lockout-run`) to the workspace itself, and refreshes it from the mod
+on every build.
 
 The Windows target and the MinGW linker:
 
@@ -115,8 +108,8 @@ shaders with Windows' own FXC.
    cd ~/lockout-fabric && git pull
    ```
 
-2. If the mod now pins another Horizon commit, the script says so. Move the checkout to it: your workspace edit
-   blocks the checkout, so undo it first, then redo the setup's checkout, copy and `sed` steps:
+2. If the mod now pins another Horizon commit, the script says so. Undo the script's workspace edit (it blocks the
+   checkout), then redo the setup's checkout step; the script adds the runner again:
 
    ```bash
    cd ~/horizon && git checkout -- Cargo.toml && rm -rf lockout-run
@@ -124,12 +117,6 @@ shaders with Windows' own FXC.
 
    The script then runs `horizon-prepare --check` on the resources and stops with what to run if the new commit
    needs more.
-
-   If the pin is unchanged, the script says when the runner changed; copy it again:
-
-   ```bash
-   cp -r ~/lockout-fabric/horizon/dev/lockout-run ~/horizon/
-   ```
 
 3. Build as above, then send everyone the new archive and have them unpack it over the old folder.
 

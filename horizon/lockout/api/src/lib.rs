@@ -122,11 +122,13 @@ const COMMANDS: &[(&str, u8)] = &[
     ("lockout draft teams <team_names:text>", 2),
     ("lockout draft players <player_names:text>", 2),
     ("lockout draft cancel", 2),
+    ("lockout cancel", 2),
     ("blackout team <team_name:text>", 2),
     ("blackout players <player_names:text>", 2),
     ("blackout draft team <team_name:text>", 2),
     ("blackout draft players <player_names:text>", 2),
     ("blackout draft cancel", 2),
+    ("blackout cancel", 2),
     ("chat team", 0),
     ("chat local", 0),
     ("GiveGoal <player_name:player_name> <goal_number:integer>", 2),
@@ -465,6 +467,15 @@ impl Lockout {
             ("blackout", Some("players"), _) => Some(request(rest(2), false, true, false)),
             ("blackout", Some("draft"), Some("team")) => Some(request(rest(3), true, true, true)),
             ("blackout", Some("draft"), Some("players")) => Some(request(rest(3), false, true, true)),
+            ("lockout" | "blackout", Some("cancel"), None) => {
+                let list = roster(&online(host));
+                let actions = self.server.lock().ok().and_then(|mut s| s.cancel_match(&list));
+                match actions {
+                    Some(actions) => self.apply(host, actions, false),
+                    None => fail(host, "No match or draft is running.".into()),
+                }
+                return true;
+            }
             ("lockout" | "blackout", Some("draft"), Some("cancel")) => {
                 let actions = self.server.lock().map(|mut s| s.cancel_draft()).unwrap_or_default();
                 if actions.is_empty() {
@@ -3265,6 +3276,31 @@ mod tests {
         assert!(ran);
         dispatch_tick(&mut host, &mods);
         assert_eq!(host.logged.borrow().as_slice(), ["Player Alex is invalid."]);
+    }
+
+    #[test]
+    fn the_cancel_commands_answer_when_nothing_runs() {
+        let mods = mods();
+        let mut host = Recorder::default();
+        for line in [
+            "lockout draft cancel",
+            "blackout draft cancel",
+            "lockout cancel",
+            "blackout cancel",
+        ] {
+            let mut ran = false;
+            dispatch_perform_console_command(&mut host, &mods, line, &mut ran);
+            assert!(ran, "{line}");
+        }
+        assert_eq!(
+            host.feedback,
+            vec![
+                "No draft is running.",
+                "No draft is running.",
+                "No match or draft is running.",
+                "No match or draft is running."
+            ]
+        );
     }
 
     #[test]

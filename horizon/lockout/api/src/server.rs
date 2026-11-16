@@ -654,6 +654,43 @@ impl State {
         out
     }
 
+    /// `/lockout cancel` (Horizon only; the Java mod has no way to stop a match): ends a draft,
+    /// or the running match with no winner (`EndLockoutPayload` with none, so Fabric clients
+    /// end it too), and puts every player back in survival. None when nothing runs.
+    pub fn cancel_match(&mut self, online: &[Online]) -> Option<Vec<Action>> {
+        if self.draft.is_some() {
+            return Some(self.cancel_draft());
+        }
+        let mut out = Vec::new();
+        let running = self.game.as_ref().is_some_and(|m| m.running);
+        if !running {
+            return None;
+        }
+        if let Some(mut p) = self.pause.take() {
+            p.cancel(&mut out);
+        }
+        if let Some(m) = &mut self.game {
+            m.running = false;
+        }
+        let time = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_millis() as i64);
+        out.push(Action::SendAll {
+            payload: Payload::End {
+                winners: Vec::new(),
+                time,
+            },
+        });
+        out.push(broadcast("The match was cancelled.", RED));
+        for p in online {
+            out.push(Action::GameMode {
+                player: p.uuid,
+                mode: 0,
+            });
+        }
+        Some(out)
+    }
+
     /// Ends a draft in progress, if there is one (`LockoutServer.cancelDraft`).
     pub fn cancel_draft(&mut self) -> Vec<Action> {
         self.draft.take().map(|mut d| d.cancel()).unwrap_or_default()
@@ -1296,6 +1333,20 @@ mod tests {
         let out = s.handle(hit(50.0, "minecraft:lava"), &[A, B]);
         assert_eq!(completed(&out), vec![("TAKE_200_DAMAGE".into(), 1)]);
         assert!(out.contains(&tell(B, "Steve completed Take 200 damage.", GREEN)));
+    }
+
+    #[test]
+    fn a_match_can_be_cancelled_with_no_winner() {
+        let mut s = running(&["ENTER_END", "ENTER_NETHER", "KILL_WITCH"]);
+        let out = s.cancel_match(&online(&[(A, 0), (B, 0)])).unwrap();
+        assert!(out.iter().any(|a| matches!(
+            a,
+            Action::SendAll { payload: Payload::End { winners, .. } } if winners.is_empty()
+        )));
+        assert!(out.contains(&Action::GameMode { player: A, mode: 0 }));
+        assert!(!s.game.as_ref().unwrap().running);
+        // Nothing left to cancel.
+        assert!(s.cancel_match(&online(&[(A, 0)])).is_none());
     }
 
     #[test]

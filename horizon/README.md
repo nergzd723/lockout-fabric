@@ -113,6 +113,9 @@ The Fabric mod's, with its permission levels and messages: `/lockout teams|playe
 (`left`, `right`, and Horizon's own `hidden`, which keeps the board off the screen), `/BoardBuilder` and
 `/SetCustomBoard`. Hold **B** for the board (`key.lockout.open_board`).
 
+Horizon adds `/lockout cancel` (or `/blackout cancel`, operators): it ends a draft, or a running match with no
+winner, and puts everyone back in survival. The Fabric mod has no way to stop a match once it started.
+
 ## What's the same
 
 Everything the Fabric mod does was compared against its sources, goal by goal:

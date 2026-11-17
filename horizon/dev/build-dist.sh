@@ -1,19 +1,23 @@
 #!/usr/bin/env bash
-# Builds Horizon with Lockout for other PCs, Windows (cross-built with MinGW), Linux (this machine's
-# own kind) or Linux on 64-bit ARM (cross-built, or native on an ARM machine), and packs it with the
-# prepared resources (horizon/dev/DIST.md). Run it from the Horizon checkout's root:
+# Builds Horizon with Lockout for other machines, Windows (cross-built with MinGW), Linux (this
+# machine's own kind) or Linux on 64-bit ARM (cross-built, or native on an ARM machine), and packs it
+# with the prepared resources (horizon/dev/DIST.md). Run it from the Horizon checkout's root:
 #
-#   cd ~/horizon && bash ~/lockout-fabric/horizon/dev/build-dist.sh --windows|--linux|--linux-arm64 [RESOURCES] [--no-resources]
+#   cd ~/horizon && bash ~/lockout-fabric/horizon/dev/build-dist.sh --windows|--linux|--linux-arm64 [--server] [RESOURCES] [--no-resources]
 #
-# (build-windows.sh, build-linux.sh and build-linux-arm64.sh are this with the platform filled in.)
+# (build-windows.sh, build-linux.sh, build-linux-arm64.sh and build-server.sh are this with the
+# platform filled in.)
 #
 # RESOURCES is the prepared resources folder, by default resources/ in the checkout's root. Writes
 # dist/<platform>/ (the game, a start script, README.txt, and the resources linked in) and
 # lockout-horizon-<platform>-<arch>.tar.gz holding the same, the resources as a real folder.
-# --no-resources leaves them out: an archive with no Minecraft files, which each PC then prepares
-# itself. Adds the runner (horizon/dev/lockout-run) to the workspace if it isn't there, and
+# --server builds a dedicated server instead (Linux): horizon-server, Horizon's server supervisor,
+# and horizon-engine, the game without sound or controllers with Lockout in it, in
+# lockout-horizon-server-<platform>-<arch>.tar.gz, to unpack in the server's folder.
+# --no-resources leaves the resources out: an archive with no Minecraft files, which each machine then
+# prepares itself. Adds the runner (horizon/dev/lockout-run) to the workspace if it isn't there, and
 # refreshes it from the mod. Fails, with what to do, when the checkout isn't on the mod's Horizon
-# commit, the resources aren't complete, or the game needs a library its players may not have
+# commit, the resources aren't complete, or a program needs a library its machine may not have
 # (Horizon's tools/check_imports.py); a Windows exe must also reserve its stack.
 set -euo pipefail
 
@@ -23,9 +27,10 @@ DOC=horizon/dev/DIST.md
 STACK=$((64 * 1024 * 1024))
 
 fail() { echo "error: $*" >&2; exit 1; }
-usage="usage: build-dist.sh --windows|--linux|--linux-arm64 [RESOURCES] [--no-resources]"
+usage="usage: build-dist.sh --windows|--linux|--linux-arm64 [--server] [RESOURCES] [--no-resources]"
 
 platform=
+server=0
 resources=resources
 with_resources=1
 for arg in "$@"; do
@@ -33,12 +38,14 @@ for arg in "$@"; do
         --windows) platform=windows ;;
         --linux) platform=linux ;;
         --linux-arm64) platform=linux-arm64 ;;
+        --server) server=1 ;;
         --no-resources) with_resources=0 ;;
         -*) fail "unknown option $arg ($usage)" ;;
         *) resources=$arg ;;
     esac
 done
 [ -n "$platform" ] || fail "$usage"
+[ "$server" = 1 ] && [ "$platform" = windows ] && fail "--server builds a Linux server: --linux or --linux-arm64"
 
 [ -f Cargo.toml ] && [ -d crates/horizon-client ] || fail "run this from the Horizon checkout's root (cd ~/horizon)"
 
@@ -46,6 +53,7 @@ pin=$(sed -n 's/^horizon_revision = "\(.*\)"/\1/p' "$LOCKOUT/horizon/lockout/hor
 head=$(git rev-parse HEAD)
 [ "$head" = "$pin" ] || fail "the checkout is on ${head:0:7}, the mod pins ${pin:0:7}: see \"A new Lockout version\" in $DOC"
 
+TARGET=
 if [ "$platform" = windows ]; then
     TARGET=x86_64-pc-windows-gnu
     ARCHIVE=lockout-horizon-windows-x64.tar.gz
@@ -64,20 +72,27 @@ else
     START=start.sh
     OBJDUMP=objdump
     if [ "$platform" = linux-arm64 ] && [ "$arch" != arm64 ]; then
-        # Cross-built: Debian or Ubuntu's arm64 compiler, and their arm64 ALSA and udev to link with.
+        # Cross-built: Debian or Ubuntu's arm64 compiler, and (for the game, which has sound and
+        # controllers) their arm64 ALSA and udev to link with.
         TARGET=aarch64-unknown-linux-gnu
         OBJDUMP=aarch64-linux-gnu-objdump
         rustup target list --installed | grep -qx "$TARGET" || fail "no ARM target: rustup target add $TARGET"
         command -v aarch64-linux-gnu-gcc > /dev/null || fail "no ARM compiler: sudo apt install gcc-aarch64-linux-gnu (see \"Linux on ARM\" in $DOC)"
-        for pc in alsa libudev; do
-            [ -f "/usr/lib/aarch64-linux-gnu/pkgconfig/$pc.pc" ] \
-                || fail "no arm64 $pc to link with: sudo apt install libasound2-dev:arm64 libudev-dev:arm64 (see \"Linux on ARM\" in $DOC)"
-        done
+        if [ "$server" = 0 ]; then
+            for pc in alsa libudev; do
+                [ -f "/usr/lib/aarch64-linux-gnu/pkgconfig/$pc.pc" ] \
+                    || fail "no arm64 $pc to link with: sudo apt install libasound2-dev:arm64 libudev-dev:arm64 (see \"Linux on ARM\" in $DOC)"
+            done
+        fi
         arch=arm64
     fi
-    ARCHIVE=lockout-horizon-linux-$arch.tar.gz
+    if [ "$server" = 1 ]; then
+        ARCHIVE=lockout-horizon-server-linux-$arch.tar.gz
+    else
+        ARCHIVE=lockout-horizon-linux-$arch.tar.gz
+    fi
 fi
-DIST=dist/$platform
+DIST=dist/$([ "$server" = 1 ] && echo "server-$platform" || echo "$platform")
 
 # The runner (horizon/dev/lockout-run): wherever the workspace has it, else added as lockout-run/,
 # and written fresh from the mod each time, its paths pointing at this checkout and this clone.
@@ -116,45 +131,67 @@ if [ "$with_resources" = 1 ]; then
 fi
 
 version=$(sed -n 's/^pub const LOCKOUT_VERSION: &str = "\(.*\)";/\1/p' "$LOCKOUT/horizon/lockout/api/src/wire.rs")
-echo "Building Lockout $version on Horizon ${pin:0:7} for $platform..."
+echo "Building Lockout $version on Horizon ${pin:0:7} for $platform$([ "$server" = 1 ] && echo ", the server")..."
 
+# cargo build --release for the platform, with its linker settings.
+build() {
+    if [ "$platform" = windows ]; then
+        # crt-static: the C runtime, libgcc and winpthread go into the exe, not beside it.
+        CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-gcc \
+        CARGO_TARGET_X86_64_PC_WINDOWS_GNU_RUSTFLAGS="-C target-feature=+crt-static" \
+            cargo build --release --target "$TARGET" "$@"
+    elif [ -n "$TARGET" ]; then
+        # pkg-config reads the arm64 .pc files, which point the linker at the arm64 libraries.
+        CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
+        PKG_CONFIG_ALLOW_CROSS=1 \
+        PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig \
+            cargo build --release --target "$TARGET" "$@"
+    else
+        # The host's own build, so it shares the cache of `cargo run --release -p lockout-run`.
+        cargo build --release "$@"
+    fi
+}
 target=$(cargo metadata --format-version 1 --no-deps | python3 -c 'import json, sys; print(json.load(sys.stdin)["target_directory"])')
-if [ "$platform" = windows ]; then
-    # crt-static: the C runtime, libgcc and winpthread go into the exe, not beside it.
-    CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-gcc \
-    CARGO_TARGET_X86_64_PC_WINDOWS_GNU_RUSTFLAGS="-C target-feature=+crt-static" \
-        cargo build --release --target "$TARGET" -p lockout-run
-    built=$target/$TARGET/release/lockout-run.exe
-elif [ -n "${TARGET:-}" ]; then
-    # pkg-config reads the arm64 .pc files, which point the linker at the arm64 libraries.
-    CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
-    PKG_CONFIG_ALLOW_CROSS=1 \
-    PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig \
-        cargo build --release --target "$TARGET" -p lockout-run
-    built=$target/$TARGET/release/lockout-run
-else
-    # The host's own build, so it shares the cache of `cargo run --release -p lockout-run`.
-    cargo build --release -p lockout-run
-    built=$target/release/lockout-run
-fi
+out=$target${TARGET:+/$TARGET}/release
 
 rm -rf "$DIST" && mkdir -p "$DIST"
-cp "$built" "$DIST/$GAME"
+if [ "$server" = 1 ]; then
+    # The engine as Horizon's server release builds it (--no-default-features: no sound or
+    # controllers), and the supervisor from the same commit, so the two speak the same protocol.
+    build -p lockout-run --no-default-features
+    cp "$out/lockout-run" "$DIST/horizon-engine"
+    build -p horizon-server
+    cp "$out/horizon-server" "$DIST/horizon-server"
+    programs=(horizon-engine horizon-server)
+else
+    build -p lockout-run
+    cp "$out/lockout-run$([ "$platform" = windows ] && echo .exe)" "$DIST/$GAME"
+    programs=("$GAME")
+fi
 
-# Only libraries every player has: Horizon's own release check, which knows x86-64's loader, so an
-# arm64 game is checked against arm64's.
+# Only libraries every player has: Horizon's own release check (--server: not even ALSA or udev),
+# which knows x86-64's loader, so an arm64 program is checked against arm64's.
+check=()
+[ "$server" = 1 ] && check+=(--server)
 if [ "$platform" = linux-arm64 ]; then
-    python3 - "$DIST/$GAME" <<'EOF'
+    for p in "${programs[@]}"; do
+        python3 - "$DIST/$p" "$server" <<'EOF'
 import sys
 sys.path.insert(0, "tools")
 import check_imports
 check_imports.LINUX_LOADER = "/lib/ld-linux-aarch64.so.1"
 check_imports.LINUX_SYSTEM = (check_imports.LINUX_SYSTEM - {"ld-linux-x86-64.so.2"}) | {"ld-linux-aarch64.so.1"}
-sys.exit(0 if check_imports.check(sys.argv[1]) else 1)
+sys.exit(0 if check_imports.check(sys.argv[1], server=sys.argv[2] == "1") else 1)
 EOF
+    done
 else
-    python3 tools/check_imports.py "$DIST/$GAME"
+    python3 tools/check_imports.py "${check[@]}" "${programs[@]/#/$DIST/}"
 fi
+if [ "$server" = 1 ] && [ -z "$TARGET" ]; then
+    # As Horizon's release checks its engine: it starts and knows its options.
+    "$DIST/horizon-engine" --help | grep -q -- '--resources' || fail "$DIST/horizon-engine doesn't start"
+fi
+
 if [ "$platform" = windows ]; then
     # And the stack lockout-run/build.rs asks for.
     python3 - "$DIST/$GAME" "$STACK" <<'EOF'
@@ -176,23 +213,49 @@ Explorer opens it too) and start the game with start.bat."
     prepare="horizon-prepare.exe --prepare --output .\\resources --server-jar <server.jar>
   horizon-prepare.exe sounds --output .\\resources"
 else
-    # The newest glibc it needs: the distributions it runs on are those with that one or newer.
-    glibc=$($OBJDUMP -T "$DIST/$GAME" 2>/dev/null | grep -o 'GLIBC_[0-9][0-9.]*' | sort -uV | tail -1 | cut -d_ -f2 || true)
-    [ -n "$glibc" ] && echo "$DIST/$GAME: needs glibc $glibc or newer"
-    printf '%s\n' '#!/bin/sh' 'cd "$(dirname "$0")" && exec ./horizon-client --resources ./resources "$@"' > "$DIST/$START"
-    chmod 755 "$DIST/$START" "$DIST/$GAME"
+    # The newest glibc they need: the distributions they run on are those with that one or newer.
+    glibc=$(for p in "${programs[@]}"; do $OBJDUMP -T "$DIST/$p" 2>/dev/null || true; done \
+        | grep -o 'GLIBC_[0-9][0-9.]*' | sort -uV | tail -1 | cut -d_ -f2 || true)
+    [ -n "$glibc" ] && echo "$DIST: needs glibc $glibc or newer"
+    chmod 755 "${programs[@]/#/$DIST/}"
     cpu=$([ "$arch" = arm64 ] && echo "64-bit ARM" || echo "$(uname -m)")
     system="Linux ($cpu${glibc:+, glibc $glibc or newer: check with ldd --version})"
+    if [ "$server" = 0 ]; then
+        printf '%s\n' '#!/bin/sh' 'cd "$(dirname "$0")" && exec ./horizon-client --resources ./resources "$@"' > "$DIST/$START"
+        chmod 755 "$DIST/$START"
+        programs+=("$START")
+    fi
     unpack="Unpack it anywhere (tar -xf $ARCHIVE) and start the game with ./start.sh. It needs a
 Vulkan driver, ALSA (libasound2) and udev, which desktop distributions have."
     prepare="./horizon-prepare --prepare --output ./resources --server-jar <server.jar>
   ./horizon-prepare sounds --output ./resources"
 fi
 
-files=("$GAME" "$START" README.txt)
-if [ "$with_resources" = 1 ]; then
-    ln -s "$resources" "$DIST/resources"
-    files+=(resources)
+files=("${programs[@]}" README.txt)
+[ "$with_resources" = 1 ] && ln -s "$resources" "$DIST/resources" && files+=(resources)
+if [ "$server" = 1 ]; then
+    cat > "$DIST/README.txt" <<EOF
+Horizon's dedicated server with Lockout $version (Horizon ${pin:0:7}), for $system.
+
+horizon-server runs the server; horizon-engine is the game it runs, with Lockout. Unpack them into the
+server's folder (a vanilla or Fabric server's folder works as it is: its world, server.properties, ops,
+whitelist and Lockout's saved match are kept):
+
+  tar -xf $ARCHIVE
+
+Then once, to agree to the EULA and write server.toml (it imports server.properties):
+
+  ./horizon-server init
+
+and to play: ./horizon-server run (the console on this terminal; Ctrl-C stops the server), or
+./horizon-server start, status and stop to run it in the background.
+
+$([ "$with_resources" = 1 ] && echo "resources/ holds Minecraft 26.3's files, prepared from your copy; the server reads them from there." || echo "The server needs Minecraft 26.3's files, prepared on a computer with the game (horizon-prepare): copy
+them here with ./horizon-server import-resources <folder>.")
+
+Every player needs Lockout $version (Fabric or Horizon). Settings: server.toml (docs/hosting.md in Horizon).
+EOF
+elif [ "$with_resources" = 1 ]; then
     cat > "$DIST/README.txt" <<EOF
 Horizon with Lockout $version (Horizon ${pin:0:7}), for $system.
 
@@ -222,12 +285,14 @@ fi
 [ "$platform" = windows ] && sed -i 's/$/\r/' "$DIST/README.txt"
 
 # -h: the resources go in as the folder they link to; --hard-dereference: every file in full, no
-# links for the other PC to make.
+# links for the other machine to make.
 rm -f "$ARCHIVE"
 tar -czhf "$ARCHIVE" --hard-dereference -C "$DIST" "${files[@]}"
 echo "Wrote $HORIZON/$ARCHIVE ($(du -h "$ARCHIVE" | cut -f1)). Test what went into it:"
 res=$([ "$with_resources" = 1 ] && echo "$DIST/resources/" || echo "<your resources>/")
-if [ "$platform" = windows ]; then
+if [ "$server" = 1 ]; then
+    echo "  unpack it in a copy of a server folder, then ./horizon-server init and ./horizon-server run"
+elif [ "$platform" = windows ]; then
     echo "  wine $DIST/$GAME --resources $res"
 else
     echo "  $DIST/$GAME --resources $res"

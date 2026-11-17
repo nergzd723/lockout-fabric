@@ -41,7 +41,7 @@ horizon/
     api/src/wire.rs         the Fabric payloads
   .lockout_tweaks/          injections: raids, zombie villagers, the debug screen
   dev/lockout-run/          runs the mod on a Horizon checkout you build yourself
-  dev/build-dist.sh         builds it for Windows, Linux or Linux ARM PCs, with the resources (dev/DIST.md)
+  dev/build-dist.sh         builds it for Windows, Linux or Linux ARM PCs, or as a server (dev/DIST.md)
   dev/lockout-test/         builds and tests the mod on a Horizon checkout (CI too)
   tools/                    regenerate goals.json, names.json and the atlas; check_sync.py, pack_hnmod.py
 ```
@@ -63,7 +63,9 @@ launcher 0.2.69's), so the launcher builds the game from that commit's source wh
 The first build downloads Rust and compiles the game: 20 to 30 minutes.
 
 Native mods run unsandboxed with your rights; read the code before you build it. The same build serves single
-player, LAN hosting and a dedicated server (`--server-output` for a standalone server).
+player, LAN hosting and a dedicated server (`--server-output` for a standalone server). Without the launcher,
+`horizon/dev/build-server.sh` builds a dedicated Lockout server, x64 or ARM, to unpack in a vanilla or Fabric
+server's folder ([dev/DIST.md](dev/DIST.md#a-server)).
 
 `lockout_tweaks` (raids, zombie villagers, the debug screen) is a bundle of its own in `horizon/.lockout_tweaks/`, so
 that the link above finds Lockout alone. From a clone of this repository:

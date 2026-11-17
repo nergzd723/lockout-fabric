@@ -1,8 +1,8 @@
-# Builds of Horizon with Lockout for other PCs
+# Builds of Horizon with Lockout for other machines
 
 How to build Horizon with Lockout for Windows or Linux PCs on your Linux machine, without the launcher, packed with
 the prepared resources so the other PCs only unpack and play (for friends, or for PCs that are offline during a LAN
-event).
+event); and a dedicated Lockout server that runs without Java ([A server](#a-server)).
 
 ## Once: the setup
 
@@ -155,6 +155,82 @@ On Debian or Ubuntu itself, the same steps work without the box (on Ubuntu 24.04
 Horizon makes no Linux ARM release of its own, so it isn't a platform Horizon tests: the build is checked to link
 and to need only standard libraries, but whether a given ARM board's GPU driver runs the game is for that board to
 show.
+
+## A server
+
+Horizon's dedicated server is two programs: `horizon-server`, the supervisor (one settings file, `server.toml`, a
+console, a web panel, backups; Horizon's [docs/hosting.md](https://github.com/horizon-rust/horizon/blob/4626921895df51521be64d485ee763412de2917c/docs/hosting.md)),
+and the engine it runs, the game without sound or controllers. `build-server.sh` builds both from the pinned
+checkout, with Lockout in the engine, so a Lockout server needs no Java. Vanilla 26.3 clients can't play Lockout
+on it (the mod kicks a client without Lockout, as the Fabric server does); Fabric and Horizon clients with Lockout
+can.
+
+For a server of this machine's kind (x86-64 here, `uname -m` says `x86_64`):
+
+```bash
+cd ~/horizon && bash ~/lockout-fabric/horizon/dev/build-server.sh
+```
+
+For a 64-bit ARM server (`uname -m` says `aarch64`; Oracle Cloud's Ampere machines, for one), cross-built as the
+ARM game is ([Linux on ARM](#linux-on-arm-and-older-distributions)), but without the ALSA and udev packages, which
+the server doesn't use: `gcc-aarch64-linux-gnu` and `rustup target add aarch64-unknown-linux-gnu` are enough.
+
+```bash
+cd ~/horizon && bash ~/lockout-fabric/horizon/dev/build-server.sh --linux-arm64
+```
+
+It writes `lockout-horizon-server-linux-x64.tar.gz` (or `-arm64`): `horizon-server`, `horizon-engine`, a
+`README.txt`, and your prepared `resources/` (the server is yours, so your copy's files are yours to put on it;
+`--no-resources` leaves them out). The programs run on systems with the glibc they were built against or newer,
+which the script prints: compare with `ldd --version` on the server. A build from Arch is newer than an Ubuntu
+server's; build it in the Ubuntu 22.04 distrobox to run on Ubuntu 22.04 or 24.04.
+
+On the server, work in a copy of the server's folder, so the Fabric one stays as it is to go back to (the world,
+`server.properties`, ops, whitelist, `config/lockout.json` and Lockout's saved match come along; the Fabric jar,
+`mods/` and `libraries/` are left unused):
+
+```bash
+cp -a ~/minecraft-26.3 ~/minecraft-26.3-horizon
+```
+
+Copy the archive there from your computer:
+
+```bash
+scp lockout-horizon-server-linux-arm64.tar.gz ubuntu@<server>:minecraft-26.3-horizon/
+```
+
+then, on the server:
+
+```bash
+cd ~/minecraft-26.3-horizon && tar -xf lockout-horizon-server-linux-arm64.tar.gz
+```
+
+Once: `init` asks about the EULA and the world, imports `server.properties` into `server.toml` (keeping the original
+as `server.properties.imported`), and keeps the existing world.
+
+```bash
+./horizon-server init
+```
+
+Stop the Fabric server first (both listen on 25565), then start this one with its console on the terminal (Ctrl-C
+stops it):
+
+```bash
+./horizon-server run
+```
+
+or in the background, with `./horizon-server status` and `./horizon-server stop`:
+
+```bash
+./horizon-server start
+```
+
+The Lockout commands, permissions and messages are the Fabric server's, and the saved match continues where the
+Fabric server left it. The server build doesn't include `lockout_tweaks` (raids on every difficulty as on Normal,
+zombies always converting villagers), as none of these builds do.
+
+For a new Lockout version, build again and unpack the new archive over the old programs; `server.toml` and the
+world stay.
 
 ## Minecraft's files
 

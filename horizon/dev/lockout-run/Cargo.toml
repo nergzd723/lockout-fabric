@@ -16,8 +16,14 @@ path = "../../lockout-fabric/horizon/lockout/api/src/lib.rs"
 name = "lockout-run"
 path = "main.rs"
 
+# horizon-client's defaults (sound, controllers, Horizon's extras) are this package's, as in the
+# launcher's generated game: `--no-default-features` builds the dedicated server's engine without
+# them, which needs neither ALSA nor udev (horizon/dev/DIST.md, "A server").
+[features]
+default = ["horizon-client/default"]
+
 [dependencies]
-horizon-client = { path = "../crates/horizon-client" }
+horizon-client = { path = "../crates/horizon-client", default-features = false }
 horizon-threads = { path = "../crates/horizon-threads" }
 horizon-mods = { path = "../crates/horizon-mods", default-features = false, features = ["index"] }
 png = "0.18"

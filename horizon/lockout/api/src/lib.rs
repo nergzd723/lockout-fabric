@@ -131,15 +131,18 @@ const COMMANDS: &[(&str, u8)] = &[
     ("blackout cancel", 2),
     ("chat team", 0),
     ("chat local", 0),
-    ("GiveGoal <player_name:player_name> <goal_number:integer>", 2),
-    ("SetStartTime <seconds:integer>", 2),
-    ("RemoveCustomBoard", 2),
+    // Horizon takes only lowercase command words (the Java mod's `GiveGoal`... are left out of the
+    // command tree, and a player's unregistered command never reaches a mod), so these are the
+    // Java mod's names in lowercase, which it registers too. The console takes either case.
+    ("givegoal <player_name:player_name> <goal_number:integer>", 2),
+    ("setstarttime <seconds:integer>", 2),
+    ("removecustomboard", 2),
     (
-        "SetDraftSettings <offer_size:integer> <pick_seconds:integer> <rerolls:integer>",
+        "setdraftsettings <offer_size:integer> <pick_seconds:integer> <rerolls:integer>",
         2,
     ),
-    ("SetScoutingTime <seconds:integer>", 2),
-    ("SetBoardSize <board_size:integer>", 2),
+    ("setscoutingtime <seconds:integer>", 2),
+    ("setboardsize <board_size:integer>", 2),
 ];
 
 const RED: u32 = 0xFF5555;
@@ -148,8 +151,28 @@ const RED: u32 = 0xFF5555;
 const VERSION_TIMEOUT_TICKS: i64 = 100;
 const LOCATE_SEARCH: i32 = 750;
 
+/// The players on the server when the list was last in reach: [`online`]'s answer inside a
+/// player's turn.
+static LAST_ONLINE: Mutex<Vec<NativeServerPlayer>> = Mutex::new(Vec::new());
+
+/// The players on the server. Inside a player's turn (their hook or command) Horizon's server lists
+/// no one, its player list being out of reach, so this is then the list from the last time it was
+/// in reach (the tick before), with the acting player as they are now: without it, what goes to
+/// every player from there (a completed goal, the tooltips) reached nobody.
 fn online(host: &dyn Host) -> Vec<NativeServerPlayer> {
-    host.server_players()
+    if let Some(me) = host.acting_player() {
+        let mut list = LAST_ONLINE.lock().map(|l| l.clone()).unwrap_or_default();
+        match list.iter_mut().find(|p| p.uuid == me.uuid) {
+            Some(p) => *p = me,
+            None => list.push(me),
+        }
+        return list;
+    }
+    let list = host.server_players();
+    if let Ok(mut last) = LAST_ONLINE.lock() {
+        last.clone_from(&list);
+    }
+    list
 }
 
 fn roster(players: &[NativeServerPlayer]) -> Vec<Online> {
@@ -458,7 +481,10 @@ impl Lockout {
             draft,
         };
         let w = |i: usize| words.get(i).copied();
-        let req = match (*first, w(1), w(2)) {
+        // The command's name in any case: `GiveGoal` from the console (or a Fabric player's habit),
+        // `givegoal` as Horizon registers it.
+        let root = first.to_ascii_lowercase();
+        let req = match (root.as_str(), w(1), w(2)) {
             ("lockout", Some("teams"), _) => Some(request(rest(2), true, false, false)),
             ("lockout", Some("players"), _) => Some(request(rest(2), false, false, false)),
             ("lockout", Some("draft"), Some("teams")) => Some(request(rest(3), true, false, true)),
@@ -505,7 +531,7 @@ impl Lockout {
                 }
                 return true;
             }
-            ("GiveGoal", Some(name), number) => {
+            ("givegoal", Some(name), number) => {
                 let number = match bounded(number, 1, (server::MAX_BOARD_SIZE * server::MAX_BOARD_SIZE) as i64) {
                     Ok(n) => n as usize,
                     Err(e) => {
@@ -530,7 +556,7 @@ impl Lockout {
                 }
                 return true;
             }
-            ("SetStartTime", Some(n), _) => {
+            ("setstarttime", Some(n), _) => {
                 match bounded(Some(n), 5, 300) {
                     Ok(v) => {
                         if let Ok(mut s) = self.server.lock() {
@@ -542,7 +568,7 @@ impl Lockout {
                 }
                 return true;
             }
-            ("SetBoardSize", Some(n), _) => {
+            ("setboardsize", Some(n), _) => {
                 match bounded(Some(n), server::MIN_BOARD_SIZE as i64, server::MAX_BOARD_SIZE as i64) {
                     Ok(v) => {
                         if let Ok(mut s) = self.server.lock() {
@@ -554,7 +580,7 @@ impl Lockout {
                 }
                 return true;
             }
-            ("SetDraftSettings", Some(a), Some(b)) => {
+            ("setdraftsettings", Some(a), Some(b)) => {
                 let parsed = bounded(Some(a), 1, 5)
                     .and_then(|o| bounded(Some(b), 3, 120).and_then(|p| bounded(w(3), 0, 10).map(|r| (o, p, r))));
                 match parsed {
@@ -575,7 +601,7 @@ impl Lockout {
                 }
                 return true;
             }
-            ("SetScoutingTime", Some(n), _) => {
+            ("setscoutingtime", Some(n), _) => {
                 match bounded(Some(n), 0, 60) {
                     Ok(v) => {
                         if let Ok(mut s) = self.server.lock() {
@@ -594,7 +620,7 @@ impl Lockout {
                 }
                 return true;
             }
-            ("RemoveCustomBoard", _, _) => {
+            ("removecustomboard", _, _) => {
                 if let Ok(mut s) = self.server.lock() {
                     s.custom_board = None;
                 }

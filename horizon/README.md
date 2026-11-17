@@ -114,7 +114,8 @@ To build it for other Windows or Linux PCs, packed with the prepared resources s
 
 ## Commands
 
-The Fabric mod's, with its permission levels and messages: `/lockout teams|players ...`, `/lockout draft ...`,
+The Fabric mod's, with its permission levels and messages (on a Horizon server, players type `/givegoal`,
+`/setboardsize` and the others in lowercase: Horizon takes only lowercase command names; both servers take them): `/lockout teams|players ...`, `/lockout draft ...`,
 `/lockout cancel`, `/blackout team|players ...`, `/blackout draft ...`, `/blackout cancel`, `/chat team|local`,
 `/GiveGoal`, `/SetStartTime`, `/SetBoardSize`, `/SetDraftSettings`, `/SetScoutingTime`, `/RemoveCustomBoard`, and on
 the client `/BoardPosition left|right|hidden`, `/BoardBuilder` and `/SetCustomBoard`. Hold **B** for the board

@@ -48,6 +48,9 @@ Change the board position:
 Change the board size:
 - `/SetBoardSize <size>` - Between 3 (3x3) and 7 (7x7), default is 5 (5x5)
 
+The server commands with capitals (`/SetBoardSize`, `/SetStartTime`, `/GiveGoal`...) also work in lowercase (`/setboardsize`...),
+which is how a Horizon server takes them.
+
 Change the match start time:
 - `/SetStartTime <seconds>` (between 5-300s)
 

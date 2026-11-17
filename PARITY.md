@@ -73,7 +73,7 @@ What the two sides exchange, so it must be identical:
 | Team chat (`/chat team\|local`) | yes | yes |
 | Tracking compass | yes | yes |
 | Saving every 30 s, restoring, the pause after a restart | yes | yes |
-| `/GiveGoal`, `/SetStartTime`, `/SetBoardSize`, `/RemoveCustomBoard` | yes | yes |
+| `/GiveGoal`, `/SetStartTime`, `/SetBoardSize`, `/RemoveCustomBoard`, also in lowercase (`/givegoal`...) | yes | lowercase only (Horizon takes no capitals in a command name; the console takes either) |
 | Version check, kicking a client without the mod | yes | yes |
 | The board on screen, `/BoardPosition left\|right\|hidden`, hold B for the board | yes | yes |
 | Board, draft and Board Builder screens, `/BoardBuilder`, `/SetCustomBoard` | yes | yes |
@@ -134,3 +134,5 @@ The goals complete as on Fabric, but the timing or an edge case can differ:
 | 2026-11-16 | `/lockout cancel`, `/blackout cancel` | `LockoutServer.cancelCommand` | `State::cancel_match` |
 | 2026-11-16 | `/BoardPosition hidden` | `LockoutConfig.BoardPosition.HIDDEN` | `client::BoardPosition::Hidden` |
 | 2026-11-16 | The debug screen's targeted block, fluid and entity | already | `.lockout_tweaks/debug_screen.rs` |
+| 2026-11-17 | Lowercase names for the six capitalised commands | `LockoutInitializer` (redirects) | `COMMANDS` |
+| 2026-11-17 | A goal completed during a player's action reaches every board (Horizon server) | n/a | `online()` |

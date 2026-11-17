@@ -30,6 +30,8 @@ import net.minecraft.world.level.storage.loot.functions.SetPotionFunction;
 import net.minecraft.core.Holder;
 import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProvider;
 import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProviders;
+import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
@@ -197,6 +199,19 @@ public class LockoutInitializer implements ModInitializer {
 
                 dispatcher.getRoot().addChild(setBoardTimeRoot);
                 setBoardTimeRoot.addChild(size);
+            }
+
+            {
+                // The same commands in lowercase, the names the Horizon port's server can register (Horizon takes
+                // only lowercase command words), so both servers take them.
+                for (String name : List.of("GiveGoal", "SetStartTime", "RemoveCustomBoard", "SetDraftSettings", "SetScoutingTime", "SetBoardSize")) {
+                    var node = dispatcher.getRoot().getChild(name);
+                    var alias = Commands.literal(name.toLowerCase(Locale.ROOT)).requires(PERMISSIONS).redirect(node);
+                    if (node.getCommand() != null) {
+                        alias.executes(node.getCommand());
+                    }
+                    dispatcher.getRoot().addChild(alias.build());
+                }
             }
 
         });

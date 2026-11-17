@@ -2,6 +2,8 @@
 - `/lockout cancel` and `/blackout cancel`: end a draft, or a running match with no winner (everyone goes back to
   survival). Before, a started match couldn't be stopped.
 - `/BoardPosition hidden` keeps the board off the screen; `left` or `right` shows it again.
+- `/givegoal`, `/setstarttime`, `/setboardsize`, `/setdraftsettings`, `/setscoutingtime` and `/removecustomboard`
+  work as the capitalised names do (a Horizon server takes only these).
 - A Horizon port lives in `horizon/`, playable with Fabric clients and servers; the Fabric mod and the port now get
   every change together (`PARITY.md`). Releases carry `lockout-<version>.hnmod` beside the jar.
 

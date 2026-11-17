@@ -13,7 +13,8 @@
 # lockout-horizon-<platform>-<arch>.tar.gz holding the same, the resources as a real folder.
 # --server builds a dedicated server instead (Linux): horizon-server, Horizon's server supervisor,
 # and horizon-engine, the game without sound or controllers with Lockout in it, in
-# lockout-horizon-server-<platform>-<arch>.tar.gz, to unpack in the server's folder.
+# lockout-horizon-server-<platform>-<arch>.tar.gz, to unpack in the server's folder. With
+# cargo-zigbuild installed (and Zig), both are static (musl), for any Linux of that CPU.
 # --no-resources leaves the resources out: an archive with no Minecraft files, which each machine then
 # prepares itself. Adds the runner (horizon/dev/lockout-run) to the workspace if it isn't there, and
 # refreshes it from the mod. Fails, with what to do, when the checkout isn't on the mod's Horizon
@@ -54,6 +55,8 @@ head=$(git rev-parse HEAD)
 [ "$head" = "$pin" ] || fail "the checkout is on ${head:0:7}, the mod pins ${pin:0:7}: see \"A new Lockout version\" in $DOC"
 
 TARGET=
+zig=0
+native=1
 if [ "$platform" = windows ]; then
     TARGET=x86_64-pc-windows-gnu
     ARCHIVE=lockout-horizon-windows-x64.tar.gz
@@ -70,19 +73,30 @@ else
     esac
     GAME=horizon-client
     START=start.sh
-    OBJDUMP=objdump
+    # A server build is static when cargo-zigbuild is installed: Zig compiles the C parts and links
+    # musl in, so the programs need no libc on the server at all and run on any Linux of that CPU,
+    # and ARM needs no cross compiler. (The game can't be: it loads the GPU's libraries at run time,
+    # which a static program can't.) Horizon's mimalloc stays the allocator, not musl's.
+    if [ "$server" = 1 ] && cargo zigbuild --help > /dev/null 2>&1; then
+        zig=1
+        TARGET=$([ "$platform" = linux-arm64 ] && echo aarch64 || uname -m)-unknown-linux-musl
+        rustup target list --installed | grep -qx "$TARGET" || fail "no musl target: rustup target add $TARGET"
+    fi
     if [ "$platform" = linux-arm64 ] && [ "$arch" != arm64 ]; then
-        # Cross-built: Debian or Ubuntu's arm64 compiler, and (for the game, which has sound and
-        # controllers) their arm64 ALSA and udev to link with.
-        TARGET=aarch64-unknown-linux-gnu
-        OBJDUMP=aarch64-linux-gnu-objdump
-        rustup target list --installed | grep -qx "$TARGET" || fail "no ARM target: rustup target add $TARGET"
-        command -v aarch64-linux-gnu-gcc > /dev/null || fail "no ARM compiler: sudo apt install gcc-aarch64-linux-gnu (see \"Linux on ARM\" in $DOC)"
-        if [ "$server" = 0 ]; then
-            for pc in alsa libudev; do
-                [ -f "/usr/lib/aarch64-linux-gnu/pkgconfig/$pc.pc" ] \
-                    || fail "no arm64 $pc to link with: sudo apt install libasound2-dev:arm64 libudev-dev:arm64 (see \"Linux on ARM\" in $DOC)"
-            done
+        native=0
+        if [ "$zig" = 0 ]; then
+            TARGET=aarch64-unknown-linux-gnu
+            rustup target list --installed | grep -qx "$TARGET" || fail "no ARM target: rustup target add $TARGET"
+            # Cross-built: Debian or Ubuntu's arm64 compiler, and (for the game, which has sound
+            # and controllers) their arm64 ALSA and udev to link with.
+            command -v aarch64-linux-gnu-gcc > /dev/null \
+                || fail "no ARM compiler: install cargo-zigbuild for a server, or sudo apt install gcc-aarch64-linux-gnu (see \"Linux on ARM\" in $DOC)"
+            if [ "$server" = 0 ]; then
+                for pc in alsa libudev; do
+                    [ -f "/usr/lib/aarch64-linux-gnu/pkgconfig/$pc.pc" ] \
+                        || fail "no arm64 $pc to link with: sudo apt install libasound2-dev:arm64 libudev-dev:arm64 (see \"Linux on ARM\" in $DOC)"
+                done
+            fi
         fi
         arch=arm64
     fi
@@ -140,6 +154,8 @@ build() {
         CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-gcc \
         CARGO_TARGET_X86_64_PC_WINDOWS_GNU_RUSTFLAGS="-C target-feature=+crt-static" \
             cargo build --release --target "$TARGET" "$@"
+    elif [ "$zig" = 1 ]; then
+        cargo zigbuild --release --target "$TARGET" "$@"
     elif [ -n "$TARGET" ]; then
         # pkg-config reads the arm64 .pc files, which point the linker at the arm64 libraries.
         CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
@@ -173,7 +189,20 @@ fi
 # which knows x86-64's loader, so an arm64 program is checked against arm64's.
 check=()
 [ "$server" = 1 ] && check+=(--server)
-if [ "$platform" = linux-arm64 ]; then
+if [ "$zig" = 1 ]; then
+    # Static: no loader and no library at all (read with the same check's ELF reader).
+    for p in "${programs[@]}"; do
+        python3 - "$DIST/$p" <<'EOF'
+import sys
+sys.path.insert(0, "tools")
+import check_imports
+interpreter, needed, _ = check_imports.elf_needs(open(sys.argv[1], "rb").read())
+if interpreter or needed:
+    sys.exit(f"{sys.argv[1]}: not static: loader {interpreter}, needs {', '.join(needed)}")
+print(f"{sys.argv[1]}: static, needs no library")
+EOF
+    done
+elif [ "$platform" = linux-arm64 ]; then
     for p in "${programs[@]}"; do
         python3 - "$DIST/$p" "$server" <<'EOF'
 import sys
@@ -187,7 +216,7 @@ EOF
 else
     python3 tools/check_imports.py "${check[@]}" "${programs[@]/#/$DIST/}"
 fi
-if [ "$server" = 1 ] && [ -z "$TARGET" ]; then
+if [ "$server" = 1 ] && [ "$native" = 1 ]; then
     # As Horizon's release checks its engine: it starts and knows its options.
     "$DIST/horizon-engine" --help | grep -q -- '--resources' || fail "$DIST/horizon-engine doesn't start"
 fi
@@ -213,13 +242,18 @@ Explorer opens it too) and start the game with start.bat."
     prepare="horizon-prepare.exe --prepare --output .\\resources --server-jar <server.jar>
   horizon-prepare.exe sounds --output .\\resources"
 else
-    # The newest glibc they need: the distributions they run on are those with that one or newer.
-    glibc=$(for p in "${programs[@]}"; do $OBJDUMP -T "$DIST/$p" 2>/dev/null || true; done \
-        | grep -o 'GLIBC_[0-9][0-9.]*' | sort -uV | tail -1 | cut -d_ -f2 || true)
-    [ -n "$glibc" ] && echo "$DIST: needs glibc $glibc or newer"
+    # The newest glibc they need (the version names their dynamic section lists, any CPU's): the
+    # distributions they run on are those with that one or newer.
+    glibc=
+    if [ "$zig" = 0 ]; then
+        glibc=$(for p in "${programs[@]}"; do grep -ao 'GLIBC_2\.[0-9][0-9.]*' "$DIST/$p" || true; done \
+            | cut -d_ -f2 | sort -uV | tail -1)
+        [ -n "$glibc" ] && echo "$DIST: needs glibc $glibc or newer"
+    fi
     chmod 755 "${programs[@]/#/$DIST/}"
     cpu=$([ "$arch" = arm64 ] && echo "64-bit ARM" || echo "$(uname -m)")
     system="Linux ($cpu${glibc:+, glibc $glibc or newer: check with ldd --version})"
+    [ "$zig" = 1 ] && system="Linux ($cpu, static: any distribution)"
     if [ "$server" = 0 ]; then
         printf '%s\n' '#!/bin/sh' 'cd "$(dirname "$0")" && exec ./horizon-client --resources ./resources "$@"' > "$DIST/$START"
         chmod 755 "$DIST/$START"

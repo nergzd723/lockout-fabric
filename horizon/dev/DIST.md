@@ -165,25 +165,44 @@ checkout, with Lockout in the engine, so a Lockout server needs no Java. Vanilla
 on it (the mod kicks a client without Lockout, as the Fabric server does); Fabric and Horizon clients with Lockout
 can.
 
-For a server of this machine's kind (x86-64 here, `uname -m` says `x86_64`):
+Build it static, with [cargo-zigbuild](https://github.com/rust-cross/cargo-zigbuild): Zig compiles the C parts and
+links musl into the programs, so they need no libc on the server at all and run on any Linux of their CPU, whatever
+glibc it has; and an ARM server needs no cross compiler. (Only the server can be: the game loads the GPU's
+libraries at run time, which a static program can't.) Once, on Arch:
 
 ```bash
-cd ~/horizon && bash ~/lockout-fabric/horizon/dev/build-server.sh
+sudo pacman -S zig
 ```
 
-For a 64-bit ARM server (`uname -m` says `aarch64`; Oracle Cloud's Ampere machines, for one), cross-built as the
-ARM game is ([Linux on ARM](#linux-on-arm-and-older-distributions)), but without the ALSA and udev packages, which
-the server doesn't use: `gcc-aarch64-linux-gnu` and `rustup target add aarch64-unknown-linux-gnu` are enough.
+```bash
+cargo install --locked cargo-zigbuild
+```
+
+```bash
+rustup target add aarch64-unknown-linux-musl x86_64-unknown-linux-musl
+```
+
+(Elsewhere, `pip install ziglang` also gives cargo-zigbuild its Zig.) Then, for a 64-bit ARM server (`uname -m`
+says `aarch64`; Oracle Cloud's Ampere machines, for one):
 
 ```bash
 cd ~/horizon && bash ~/lockout-fabric/horizon/dev/build-server.sh --linux-arm64
 ```
 
-It writes `lockout-horizon-server-linux-x64.tar.gz` (or `-arm64`): `horizon-server`, `horizon-engine`, a
+or for an x86-64 one (`x86_64`):
+
+```bash
+cd ~/horizon && bash ~/lockout-fabric/horizon/dev/build-server.sh
+```
+
+It writes `lockout-horizon-server-linux-arm64.tar.gz` (or `-x64`): `horizon-server`, `horizon-engine`, a
 `README.txt`, and your prepared `resources/` (the server is yours, so your copy's files are yours to put on it;
-`--no-resources` leaves them out). The programs run on systems with the glibc they were built against or newer,
-which the script prints: compare with `ldd --version` on the server. A build from Arch is newer than an Ubuntu
-server's; build it in the Ubuntu 22.04 distrobox to run on Ubuntu 22.04 or 24.04.
+`--no-resources` leaves them out). The script checks both programs are static ("static, needs no library").
+
+Without cargo-zigbuild, the script links against this machine's glibc instead (an ARM build then needs Debian or
+Ubuntu's `gcc-aarch64-linux-gnu`, as in [Linux on ARM](#linux-on-arm-and-older-distributions)). The programs then
+run only on systems with that glibc or newer, which the script prints: compare with `ldd --version` on the server.
+Arch's is newer than an Ubuntu server's, so that way needs the Ubuntu 22.04 distrobox.
 
 On the server, work in a copy of the server's folder, so the Fabric one stays as it is to go back to (the world,
 `server.properties`, ops, whitelist, `config/lockout.json` and Lockout's saved match come along; the Fabric jar,
